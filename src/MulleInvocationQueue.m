@@ -9,8 +9,6 @@
 
 #import "import-private.h"
 
-#import "MulleThread.h"
-
 
 @class MulleInvocationQueue;
 

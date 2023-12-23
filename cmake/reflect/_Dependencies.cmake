@@ -12,6 +12,88 @@ if( MULLE_TRACE_INCLUDE)
 endif()
 
 #
+# Generated from sourcetree: 9053A17B-A774-4810-8090-807670393DBC;MulleThread;no-singlephase;
+# Disable with : `mulle-sourcetree mark MulleThread no-link`
+# Disable for this platform: `mulle-sourcetree mark MulleThread no-cmake-platform-${MULLE_UNAME}`
+# Disable for a sdk: `mulle-sourcetree mark MulleThread no-cmake-sdk-<name>`
+#
+if( NOT MULLE_THREAD_LIBRARY)
+   find_library( MULLE_THREAD_LIBRARY NAMES
+      ${CMAKE_STATIC_LIBRARY_PREFIX}MulleThread${CMAKE_DEBUG_POSTFIX}${CMAKE_STATIC_LIBRARY_SUFFIX}
+      ${CMAKE_STATIC_LIBRARY_PREFIX}MulleThread${CMAKE_STATIC_LIBRARY_SUFFIX}
+      MulleThread
+      NO_CMAKE_SYSTEM_PATH NO_SYSTEM_ENVIRONMENT_PATH
+   )
+   if( NOT MULLE_THREAD_LIBRARY AND NOT DEPENDENCY_IGNORE_SYSTEM_LIBARIES)
+      find_library( MULLE_THREAD_LIBRARY NAMES
+         ${CMAKE_STATIC_LIBRARY_PREFIX}MulleThread${CMAKE_DEBUG_POSTFIX}${CMAKE_STATIC_LIBRARY_SUFFIX}
+         ${CMAKE_STATIC_LIBRARY_PREFIX}MulleThread${CMAKE_STATIC_LIBRARY_SUFFIX}
+         MulleThread
+      )
+   endif()
+   message( STATUS "MULLE_THREAD_LIBRARY is ${MULLE_THREAD_LIBRARY}")
+   #
+   # The order looks ascending, but due to the way this file is read
+   # it ends up being descending, which is what we need.
+   #
+   if( MULLE_THREAD_LIBRARY)
+      #
+      # Add MULLE_THREAD_LIBRARY to ALL_LOAD_DEPENDENCY_LIBRARIES list.
+      # Disable with: `mulle-sourcetree mark MulleThread no-cmake-add`
+      #
+      list( APPEND ALL_LOAD_DEPENDENCY_LIBRARIES ${MULLE_THREAD_LIBRARY})
+      #
+      # Inherit information from dependency.
+      # Encompasses: no-cmake-searchpath,no-cmake-dependency,no-cmake-loader
+      # Disable with: `mulle-sourcetree mark MulleThread no-cmake-inherit`
+      #
+      # temporarily expand CMAKE_MODULE_PATH
+      get_filename_component( _TMP_MULLE_THREAD_ROOT "${MULLE_THREAD_LIBRARY}" DIRECTORY)
+      get_filename_component( _TMP_MULLE_THREAD_ROOT "${_TMP_MULLE_THREAD_ROOT}" DIRECTORY)
+      #
+      #
+      # Search for "Definitions.cmake" and "DependenciesAndLibraries.cmake" to include.
+      # Disable with: `mulle-sourcetree mark MulleThread no-cmake-dependency`
+      #
+      foreach( _TMP_MULLE_THREAD_NAME "MulleThread")
+         set( _TMP_MULLE_THREAD_DIR "${_TMP_MULLE_THREAD_ROOT}/include/${_TMP_MULLE_THREAD_NAME}/cmake")
+         # use explicit path to avoid "surprises"
+         if( IS_DIRECTORY "${_TMP_MULLE_THREAD_DIR}")
+            list( INSERT CMAKE_MODULE_PATH 0 "${_TMP_MULLE_THREAD_DIR}")
+            #
+            include( "${_TMP_MULLE_THREAD_DIR}/DependenciesAndLibraries.cmake" OPTIONAL)
+            #
+            list( REMOVE_ITEM CMAKE_MODULE_PATH "${_TMP_MULLE_THREAD_DIR}")
+            #
+            unset( MULLE_THREAD_DEFINITIONS)
+            include( "${_TMP_MULLE_THREAD_DIR}/Definitions.cmake" OPTIONAL)
+            list( APPEND INHERITED_DEFINITIONS ${MULLE_THREAD_DEFINITIONS})
+            break()
+         else()
+            message( STATUS "${_TMP_MULLE_THREAD_DIR} not found")
+         endif()
+      endforeach()
+      #
+      # Search for "MulleObjCLoader+<name>.h" in include directory.
+      # Disable with: `mulle-sourcetree mark MulleThread no-cmake-loader`
+      #
+      if( NOT NO_INHERIT_OBJC_LOADERS)
+         foreach( _TMP_MULLE_THREAD_NAME "MulleThread")
+            set( _TMP_MULLE_THREAD_FILE "${_TMP_MULLE_THREAD_ROOT}/include/${_TMP_MULLE_THREAD_NAME}/MulleObjCLoader+${_TMP_MULLE_THREAD_NAME}.h")
+            if( EXISTS "${_TMP_MULLE_THREAD_FILE}")
+               list( APPEND INHERITED_OBJC_LOADERS ${_TMP_MULLE_THREAD_FILE})
+               break()
+            endif()
+         endforeach()
+      endif()
+   else()
+      # Disable with: `mulle-sourcetree mark MulleThread no-require-link`
+      message( FATAL_ERROR "MULLE_THREAD_LIBRARY was not found")
+   endif()
+endif()
+
+
+#
 # Generated from sourcetree: 46519FAC-A31D-47EF-AFF2-7A636B4844DF;MulleFoundationBase;no-singlephase;
 # Disable with : `mulle-sourcetree mark MulleFoundationBase no-link`
 # Disable for this platform: `mulle-sourcetree mark MulleFoundationBase no-cmake-platform-${MULLE_UNAME}`

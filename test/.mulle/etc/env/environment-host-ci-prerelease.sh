@@ -419,6 +419,24 @@ export MULLE_INVOCATION_QUEUE_BRANCH="prerelease"
 
 
 #
+# MulleThread nodetype: ${MULLE_THREAD_NODETYPE:-tar}
+#
+export MULLE_THREAD_NODETYPE="git"
+
+
+#
+# MulleThread url: ${MULLE_THREAD_URL:-https://github.com/MulleFoundation/MulleThread/archive/${MULLE_TAG}.tar.gz}
+#
+export MULLE_THREAD_URL="https://github.com/MulleFoundation/MulleThread.git"
+
+
+#
+# MulleThread branch: ${MULLE_THREAD_BRANCH}
+#
+export MULLE_THREAD_BRANCH="prerelease"
+
+
+#
 # MulleFoundationBase nodetype: ${MULLE_FOUNDATION_BASE_NODETYPE:-tar}
 #
 export MULLE_FOUNDATION_BASE_NODETYPE="git"

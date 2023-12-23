@@ -51,9 +51,9 @@ src/generic/import.h
 #
 set( PUBLIC_HEADERS
 src/MulleInvocationQueue.h
-src/MulleThread.h
 src/NSInvocation+MulleReturnStatus.h
 src/NSInvocation+UTF8String.h
 src/generic/MulleObjCLoader+MulleInvocationQueue.h
+src/reflect/_MulleInvocationQueue-versioncheck.h
 )
 

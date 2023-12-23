@@ -9,11 +9,10 @@
  *
  *      mulle-sde environment set MULLE_MATCH_TO_C_RUN DISABLE
  */
-#ifndef mulle_invocation_queue_export_h__
-#define mulle_invocation_queue_export_h__
+#ifndef _mulle_invocation_queue__export_h__
+#define _mulle_invocation_queue__export_h__
 
 
-#import "MulleThread.h"
 #import "NSInvocation+MulleReturnStatus.h"
 #import "NSInvocation+UTF8String.h"
 #import "MulleObjCLoader+MulleInvocationQueue.h"

@@ -4,9 +4,6 @@
 int   main( int argc, char *argv[])
 {
    [MulleInvocationQueue invocationQueue];
-   [MulleThread mulleThreadWithTarget:[MulleThread class]
-                             selector:@selector( whatever)
-                               object:nil];
    return( 0);
 }
 
