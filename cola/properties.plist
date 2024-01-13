@@ -7,12 +7,20 @@
       user="MulleFoundation";
       repo="MulleInvocationQueue";
       homepage="https://github.com/MulleFoundation/MulleInvocationQueue";
-      license="BSD-3-Clause"
+      license="BSD-3-Clause";
    };
    dependencies =
    (
       {
-         description="🛸 MulleFoundationBase does something";
+         description="🍝 MulleThread sleeps until nudged";
+         domain="github";
+         name="MulleThread";
+         repo="MulleThread";
+         url="https://github.com/MulleFoundation/MulleThread";
+         user="MulleFoundation";
+      },
+      {
+         description="🧱 MulleFoundationBase amalgamates Foundations projects";
          domain="github";
          name="MulleFoundationBase";
          repo="MulleFoundationBase";
@@ -27,5 +35,5 @@
          url="https://github.com/mulle-objc/mulle-objc-list";
          user="mulle-objc";
       }
-   )
+   );
 }
