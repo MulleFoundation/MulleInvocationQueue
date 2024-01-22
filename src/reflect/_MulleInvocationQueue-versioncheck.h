@@ -7,16 +7,31 @@
 
 #if defined( MULLE_FOUNDATION_BASE_VERSION)
 # ifndef MULLE_FOUNDATION_BASE_VERSION_MIN
-#  define MULLE_FOUNDATION_BASE_VERSION_MIN  ((0UL << 20) | (22 << 8) | 0)
+#  define MULLE_FOUNDATION_BASE_VERSION_MIN  ((0UL << 20) | (23 << 8) | 0)
 # endif
 # ifndef MULLE_FOUNDATION_BASE_VERSION_MAX
-#  define MULLE_FOUNDATION_BASE_VERSION_MAX  ((0UL << 20) | (23 << 8) | 0)
+#  define MULLE_FOUNDATION_BASE_VERSION_MAX  ((0UL << 20) | (24 << 8) | 0)
 # endif
 # if MULLE_FOUNDATION_BASE_VERSION < MULLE_FOUNDATION_BASE_VERSION_MIN
 #  error "MulleFoundationBase is too old"
 # endif
 # if MULLE_FOUNDATION_BASE_VERSION >= MULLE_FOUNDATION_BASE_VERSION_MAX
 #  error "MulleFoundationBase is too new"
+# endif
+#endif
+
+#if defined( MULLE_THREAD_VERSION)
+# ifndef MULLE_THREAD_VERSION_MIN
+#  define MULLE_THREAD_VERSION_MIN  ((0UL << 20) | (0 << 8) | 1)
+# endif
+# ifndef MULLE_THREAD_VERSION_MAX
+#  define MULLE_THREAD_VERSION_MAX  ((0UL << 20) | (1 << 8) | 0)
+# endif
+# if MULLE_THREAD_VERSION < MULLE_THREAD_VERSION_MIN
+#  error "MulleThread is too old"
+# endif
+# if MULLE_THREAD_VERSION >= MULLE_THREAD_VERSION_MAX
+#  error "MulleThread is too new"
 # endif
 #endif
 
