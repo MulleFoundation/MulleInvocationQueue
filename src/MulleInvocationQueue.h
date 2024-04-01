@@ -74,18 +74,20 @@ static inline BOOL   MulleInvocationQueueStateCanBeCancelled( NSUInteger state)
 @end
 
 
-
+//
+// TODO: check for invocations pushing things unto the same invocation queue
+//
 
 @interface MulleInvocationQueue : NSObject
 {
-   mulle_thread_mutex_t          _queueLock;
-   struct mulle_pointerqueue     _queue;
-   mulle_atomic_pointer_t        _state;
-   NSInvocation                  *_finalInvocation;
-   BOOL                          _notified;
+   mulle_thread_mutex_t        _queueLock;
+   struct mulle_pointerqueue   _queue;
+   mulle_atomic_pointer_t      _state;
+   NSInvocation                *_finalInvocation;
 }
 
 @property( assign) id <MulleInvocationQueueDelegate>   delegate;
+
 @property( readonly, retain) MulleThread               *executionThread;
 @property( readonly, retain) NSInvocation              *failedInvocation;
 @property( readonly, retain) id                        exception;
@@ -104,17 +106,18 @@ static inline BOOL   MulleInvocationQueueStateCanBeCancelled( NSUInteger state)
 - (instancetype) initWithCapacity:(NSUInteger) capacity;
 
 - (BOOL) poll;
-- (int) invokeNextInvocation:(id) sender;  // unused sender
+- (int) invokeNextInvocation:(id) sender                    MULLE_OBJC_THREADSAFE_METHOD;  // unused sender
 
-- (int) terminate;  // calls cancel if not appShouldWaitForCompletion, else blocks
-- (void) preempt;
-- (void) cancelWhenIdle;
-- (void) start;
+// calls cancel if not appShouldWaitForCompletion, else blocks
+- (int) terminate                                           MULLE_OBJC_THREADSAFE_METHOD;
+- (void) preempt                                            MULLE_OBJC_THREADSAFE_METHOD;
+- (void) cancelWhenIdle                                     MULLE_OBJC_THREADSAFE_METHOD;
+- (void) start                                              MULLE_OBJC_THREADSAFE_METHOD;
 
-- (void) addInvocation:(NSInvocation *) invocation;
+- (void) addInvocation:(NSInvocation *) invocation          MULLE_OBJC_THREADSAFE_METHOD;
 - (void) addFinalInvocation:(NSInvocation *) invocation;
 
-- (NSUInteger) state;
+- (NSUInteger) state                                        MULLE_OBJC_THREADSAFE_METHOD;
 
 
 @end

@@ -70,9 +70,9 @@ NS_OPTIONS_TABLE( MulleInvocationQueueState, 9) =
 {
    NSInvocation   *invocation;
 
+   assert( ! _failedInvocation);
    [_executionThread release];
    [_exception release];
-
 
    // safety..., no need to lock though
    while( (invocation = mulle_pointerqueue_pop( &_queue)))
@@ -100,7 +100,7 @@ NS_OPTIONS_TABLE( MulleInvocationQueueState, 9) =
 }
 
 
-- (void) _setState:(NSUInteger) state
+- (void) _setState:(NSUInteger) state     MULLE_OBJC_THREADSAFE_METHOD
 {
    _mulle_atomic_pointer_write( &_state, (void *) state);
 
@@ -130,6 +130,7 @@ NS_OPTIONS_TABLE( MulleInvocationQueueState, 9) =
    [invocation retain];
 
    mulle_thread_mutex_lock( &_queueLock);
+   [invocation mulleRelinquishAccess];
    mulle_pointerqueue_push( &_queue, invocation);
    mulle_thread_mutex_unlock( &_queueLock);
 
@@ -146,14 +147,15 @@ NS_OPTIONS_TABLE( MulleInvocationQueueState, 9) =
 }
 
 
-- (void) _discardInvocations
+- (void) _discardInvocations        MULLE_OBJC_THREADSAFE_METHOD
 {
    NSInvocation   *invocation;
 
-   mulle_thread_mutex_lock( &_queueLock);
-   while( (invocation = mulle_pointerqueue_pop( &_queue)))
-      [invocation autorelease];
-   mulle_thread_mutex_unlock( &_queueLock);
+   mulle_thread_mutex_do( _queueLock)
+   {
+      while( (invocation = mulle_pointerqueue_pop( &_queue)))
+         [invocation autorelease];
+   }
 }
 
 
@@ -172,9 +174,11 @@ NS_OPTIONS_TABLE( MulleInvocationQueueState, 9) =
 
    assert( [self isExecutionThread]);
 
-   mulle_thread_mutex_lock( &_queueLock);
-   invocation = mulle_pointerqueue_pop( &_queue);
-   mulle_thread_mutex_unlock( &_queueLock);
+   mulle_thread_mutex_do( _queueLock)
+   {
+      invocation = mulle_pointerqueue_pop( &_queue);
+      [invocation mulleGainAccess];
+   }
 
    if( ! invocation)
    {
@@ -243,10 +247,13 @@ NS_OPTIONS_TABLE( MulleInvocationQueueState, 9) =
    if( ! _executionThread)
    {
       options          = MulleThreadDontRetainTarget|MulleThreadDontReleaseTarget;
+
+      // this is the only time _executionThread must be written to before
+      // finalize/dealloc
       _executionThread = [[MulleThread alloc] mulleInitWithTarget:self
-                                                        selector:@selector( invokeNextInvocation:)
-                                                          object:nil
-                                                         options:options];
+                                                         selector:@selector( invokeNextInvocation:)
+                                                           object:nil
+                                                          options:options];
    }
    [_executionThread start];
 }  
@@ -262,13 +269,18 @@ NS_OPTIONS_TABLE( MulleInvocationQueueState, 9) =
 {
    NSUInteger   state;
 
+   if( ! _executionThread)
+      return;
+
+   assert( [NSThread currentThread] != _executionThread);
+
    for(;;)
    {
       state = [self state];
       switch( state & ~MulleInvocationQueueNotified)
       {
       case MulleInvocationQueueInit      :
-         [_executionThread nudge];
+         [_executionThread nudge]; // ????
          break;
 
       case MulleInvocationQueueRun       :
