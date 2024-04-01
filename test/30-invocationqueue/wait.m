@@ -38,13 +38,15 @@ int   main( int argc, const char * argv[])
 #endif
 
    printf( "create\n");
-   queue = [MulleInvocationQueue invocationQueue];
+   queue = [MulleInvocationQueue alloc];
+   queue = [queue initWithCapacity:128
+                     configuration:MulleInvocationQueueMessageDelegateOnExecutionThread
+                                   | MulleInvocationQueueTerminateWaitsForCompletion];
+   queue = [queue autorelease];
 
    foo = [Foo object];
 
    [queue setDelegate:foo];
-   [queue setMessageDelegateOnExecutionThread:YES];
-   [queue setTerminateWaitsForCompletion:YES];
 
    invocation = [NSInvocation mulleInvocationWithTarget:foo
       selector:@selector( sleep)];

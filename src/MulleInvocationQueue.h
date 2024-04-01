@@ -13,6 +13,19 @@
 @class MulleInvocationQueue;
 
 
+
+typedef NS_OPTIONS( NSUInteger, MulleInvocationQueueConfiguration)
+{
+   MulleInvocationQueueTrace                            = 0x1,
+   MulleInvocationQueueDoneOnEmptyQueue                 = 0x2,  // send "done", whenever queue is empty (NO)
+   MulleInvocationQueueCatchesExceptions                = 0x4,  // cancel on exception (NO)
+   MulleInvocationQueueIgnoresCaughtExceptions          = 0x8,  // (NO)
+   MulleInvocationQueueCancelsOnFailedReturnStatus      = 0x10, // (NO)
+   MulleInvocationQueueMessageDelegateOnExecutionThread = 0x20, // (NO)
+   MulleInvocationQueueTerminateWaitsForCompletion      = 0x40
+};
+
+
 typedef NS_OPTIONS( NSUInteger, MulleInvocationQueueState)
 {
    MulleInvocationQueueInit = 0,                  // in the beginning
@@ -23,7 +36,7 @@ typedef NS_OPTIONS( NSUInteger, MulleInvocationQueueState)
    MulleInvocationQueueError,                     // cancel request fulfilled by "execution"
    MulleInvocationQueueException,
    MulleInvocationQueueCancel,
-   MulleInvocationQueueNotified = 0x8000,         // "main" has notified
+   MulleInvocationQueueNotified = 0x8000          // "main" has notified
 };
 
 
@@ -80,10 +93,11 @@ static inline BOOL   MulleInvocationQueueStateCanBeCancelled( NSUInteger state)
 
 @interface MulleInvocationQueue : NSObject
 {
-   mulle_thread_mutex_t        _queueLock;
-   struct mulle_pointerqueue   _queue;
-   mulle_atomic_pointer_t      _state;
-   NSInvocation                *_finalInvocation;  // assign! (retained via _queue logic)
+   mulle_thread_mutex_t                _queueLock;
+   struct mulle_pointerqueue           _queue;
+   mulle_atomic_pointer_t              _state;
+   NSInvocation                        *_finalInvocation;  // assign! (retained via _queue logic)
+   MulleInvocationQueueConfiguration   _configuration;
 }
 
 @property( assign) id <MulleInvocationQueueDelegate>   delegate;
@@ -92,18 +106,18 @@ static inline BOOL   MulleInvocationQueueStateCanBeCancelled( NSUInteger state)
 @property( readonly, retain) NSInvocation              *failedInvocation;
 @property( readonly, retain) id                        exception;
 
-// TODO make this optional and set atomically or just once during init
-@property( assign) BOOL   trace;                            // send "done", whenever queue is empty (NO)
-@property( assign) BOOL   doneOnEmptyQueue;                 // send "done", whenever queue is empty (NO)
-@property( assign) BOOL   catchesExceptions;                // cancel on exception (NO)
-@property( assign) BOOL   ignoresCaughtExceptions;          // (NO)
-@property( assign) BOOL   cancelsOnFailedReturnStatus;      // (NO)
-@property( assign) BOOL   messageDelegateOnExecutionThread; // (NO)
-@property( assign) BOOL   terminateWaitsForCompletion;      // don't terminate before complete (NO)
+@property( readonly, dynamic) BOOL   trace                            MULLE_OBJC_THREADSAFE_PROPERTY;                            // send "done", whenever queue is empty (NO)
+@property( readonly, dynamic) BOOL   doneOnEmptyQueue                 MULLE_OBJC_THREADSAFE_PROPERTY;                 // send "done", whenever queue is empty (NO)
+@property( readonly, dynamic) BOOL   catchesExceptions                MULLE_OBJC_THREADSAFE_PROPERTY;                // cancel on exception (NO)
+@property( readonly, dynamic) BOOL   ignoresCaughtExceptions          MULLE_OBJC_THREADSAFE_PROPERTY;          // (NO)
+@property( readonly, dynamic) BOOL   cancelsOnFailedReturnStatus      MULLE_OBJC_THREADSAFE_PROPERTY;      // (NO)
+@property( readonly, dynamic) BOOL   messageDelegateOnExecutionThread MULLE_OBJC_THREADSAFE_PROPERTY; // (NO)
+@property( readonly, dynamic) BOOL   terminateWaitsForCompletion      MULLE_OBJC_THREADSAFE_PROPERTY;      // don't terminate before complete (NO)
 
 
 + (instancetype) invocationQueue;
-- (instancetype) initWithCapacity:(NSUInteger) capacity;
+- (instancetype) initWithCapacity:(NSUInteger) capacity
+                    configuration:(MulleInvocationQueueConfiguration) configuration;
 
 - (BOOL) poll;
 - (int) invokeNextInvocation:(id) sender                    MULLE_OBJC_THREADSAFE_METHOD;  // unused sender
@@ -115,7 +129,7 @@ static inline BOOL   MulleInvocationQueueStateCanBeCancelled( NSUInteger state)
 - (void) start                                              MULLE_OBJC_THREADSAFE_METHOD;
 
 - (void) addInvocation:(NSInvocation *) invocation          MULLE_OBJC_THREADSAFE_METHOD;
-- (void) addFinalInvocation:(NSInvocation *) invocation;
+- (void) addFinalInvocation:(NSInvocation *) invocation     MULLE_OBJC_THREADSAFE_METHOD;
 
 - (NSUInteger) state                                        MULLE_OBJC_THREADSAFE_METHOD;
 
