@@ -30,6 +30,76 @@ NS_OPTIONS_TABLE( MulleInvocationQueueState, 9) =
 @implementation MulleInvocationQueue
 
 
+static void   MulleInvocationQueuePush( MulleInvocationQueue *self,
+                                        NSInvocation *invocation)
+{
+   mulle_thread_mutex_do( self->_queueLock)
+   {
+      [invocation retainArguments];
+      [invocation retain];
+      assert( ! _finalInvocation);
+
+      [invocation mulleRelinquishAccess];
+      mulle_pointerqueue_push( &self->_queue, invocation);
+   }
+}
+
+
+static void   MulleInvocationQueueFinalPush( MulleInvocationQueue *self,
+                                             NSInvocation *invocation)
+{
+   mulle_thread_mutex_do( self->_queueLock)
+   {
+      [invocation retainArguments];
+      [invocation retain];
+      self->_finalInvocation = invocation;
+
+      [invocation mulleRelinquishAccess];
+      mulle_pointerqueue_push( &self->_queue, invocation);
+   }
+}
+
+
+static NSInvocation  *MulleInvocationQueuePop( MulleInvocationQueue *self,
+                                               BOOL *isFinal)
+{
+   NSInvocation   *invocation;
+
+   mulle_thread_mutex_do( self->_queueLock)
+   {
+      invocation = mulle_pointerqueue_pop( &self->_queue);
+      [invocation mulleGainAccess];
+      [invocation autorelease];
+
+      if( isFinal)
+         *isFinal = (invocation == self->_finalInvocation);
+   }
+   return( invocation);
+}
+
+
+static void   MulleInvocationQueueDiscardInvocations( MulleInvocationQueue *self)
+{
+   NSInvocation   *invocation;
+
+   mulle_thread_mutex_do( self->_queueLock)
+   {
+      while( (invocation = mulle_pointerqueue_pop( &self->_queue)))
+         [invocation autorelease];
+   }
+}
+
+
+static void   MulleInvocationQueueFinalizing( MulleInvocationQueue *self)
+{
+   mulle_thread_mutex_do( self->_queueLock)
+   {
+      self->_finalInvocation = nil;
+   }
+}
+
+
+
 + (instancetype) invocationQueue
 {
    return( [[[self alloc] initWithCapacity:1024] autorelease]);
@@ -58,9 +128,8 @@ NS_OPTIONS_TABLE( MulleInvocationQueueState, 9) =
    [self terminate];
 
    // get rid of invocations, which retain stuff
-   [self _discardInvocations];
-   [_finalInvocation autorelease];
-   _finalInvocation = nil;
+   MulleInvocationQueueDiscardInvocations( self);
+   MulleInvocationQueueFinalizing( self);
 
    [super finalize];
 }
@@ -117,22 +186,17 @@ NS_OPTIONS_TABLE( MulleInvocationQueueState, 9) =
 {
    NSUInteger   count;
 
-   mulle_thread_mutex_lock( &_queueLock);
-   count = mulle_pointerqueue_get_count( &_queue);
-   mulle_thread_mutex_unlock( &_queueLock);
+   mulle_thread_mutex_do( self->_queueLock)
+   {
+      count = mulle_pointerqueue_get_count( &_queue);
+   }
    return( count);
 }
 
 
 - (void) addInvocation:(NSInvocation *) invocation
 {
-   [invocation retainArguments];
-   [invocation retain];
-
-   mulle_thread_mutex_lock( &_queueLock);
-   [invocation mulleRelinquishAccess];
-   mulle_pointerqueue_push( &_queue, invocation);
-   mulle_thread_mutex_unlock( &_queueLock);
+   MulleInvocationQueuePush( self, invocation);
 
    [_executionThread nudge];
 }
@@ -140,51 +204,25 @@ NS_OPTIONS_TABLE( MulleInvocationQueueState, 9) =
 
 - (void) addFinalInvocation:(NSInvocation *) invocation
 {
-   [_finalInvocation autorelease];
-   _finalInvocation = [invocation retain];
+   MulleInvocationQueueFinalPush( self, invocation);
 
-   [self addInvocation:invocation];
-}
-
-
-- (void) _discardInvocations        MULLE_OBJC_THREADSAFE_METHOD
-{
-   NSInvocation   *invocation;
-
-   mulle_thread_mutex_do( _queueLock)
-   {
-      while( (invocation = mulle_pointerqueue_pop( &_queue)))
-         [invocation autorelease];
-   }
-}
-
-
-- (void) _finalizing:(NSInvocation *) invocation
-{
-   assert( [self isExecutionThread]);
-
-   [_finalInvocation autorelease];
-   _finalInvocation = nil;
+   [_executionThread nudge];
 }
 
 
 - (int) invokeNextInvocation:(id) unused
 {
    NSInvocation   *invocation;
+   BOOL           isFinal;
 
    assert( [self isExecutionThread]);
 
-   mulle_thread_mutex_do( _queueLock)
-   {
-      invocation = mulle_pointerqueue_pop( &_queue);
-      [invocation mulleGainAccess];
-   }
-
+   invocation = MulleInvocationQueuePop( self, &isFinal);
    if( ! invocation)
    {
       if( _doneOnEmptyQueue)
       {
-         [self _finalizing:invocation];  // do this before _setState:
+         MulleInvocationQueueFinalizing( self);   // do this before _setState:
          [self _setState:MulleInvocationQueueDone];
          return( MulleThreadGoIdle);
       }
@@ -194,7 +232,6 @@ NS_OPTIONS_TABLE( MulleInvocationQueueState, 9) =
 
    [self _setState:MulleInvocationQueueRun];
 
-   invocation = [invocation autorelease];
    if( _trace)
       fprintf( stderr, "queue %p executes %s", self, [invocation invocationUTF8String]);
 
@@ -212,7 +249,7 @@ NS_OPTIONS_TABLE( MulleInvocationQueueState, 9) =
          [_exception autorelease];
          _exception = [exception retain];
 
-         [self _discardInvocations];
+         MulleInvocationQueueDiscardInvocations( self);
          [self _setState:MulleInvocationQueueException];
          return( MulleThreadCancelMain);
       }
@@ -224,15 +261,15 @@ NS_OPTIONS_TABLE( MulleInvocationQueueState, 9) =
 
    if( _cancelsOnFailedReturnStatus && [invocation mulleReturnStatus])
    {
-      [self _discardInvocations];
+      MulleInvocationQueueDiscardInvocations( self);
       [self _setState:MulleInvocationQueueError];
       return( MulleThreadCancelMain);
    }
 
-   if( _finalInvocation == invocation)
+   if( isFinal)
    {
       [self _setState:MulleInvocationQueueDone];
-      [self _finalizing:invocation]; // do this after _setState:
+      MulleInvocationQueueFinalizing( self);   // do this *after* _setState:
       return( MulleThreadCancelMain);
    }
 

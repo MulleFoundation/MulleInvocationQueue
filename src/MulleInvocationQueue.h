@@ -83,7 +83,7 @@ static inline BOOL   MulleInvocationQueueStateCanBeCancelled( NSUInteger state)
    mulle_thread_mutex_t        _queueLock;
    struct mulle_pointerqueue   _queue;
    mulle_atomic_pointer_t      _state;
-   NSInvocation                *_finalInvocation;
+   NSInvocation                *_finalInvocation;  // assign! (retained via _queue logic)
 }
 
 @property( assign) id <MulleInvocationQueueDelegate>   delegate;
@@ -92,7 +92,7 @@ static inline BOOL   MulleInvocationQueueStateCanBeCancelled( NSUInteger state)
 @property( readonly, retain) NSInvocation              *failedInvocation;
 @property( readonly, retain) id                        exception;
 
-// TODO make this optional and set atomically
+// TODO make this optional and set atomically or just once during init
 @property( assign) BOOL   trace;                            // send "done", whenever queue is empty (NO)
 @property( assign) BOOL   doneOnEmptyQueue;                 // send "done", whenever queue is empty (NO)
 @property( assign) BOOL   catchesExceptions;                // cancel on exception (NO)
