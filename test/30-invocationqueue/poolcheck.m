@@ -36,12 +36,14 @@ int   main( int argc, const char * argv[])
       return( 1);
 #endif
 
-   queue = [MulleInvocationQueue invocationQueue];
+   queue = [MulleInvocationQueue alloc];
+   queue = [queue initWithCapacity:128
+                     configuration:MulleInvocationQueueTerminateWaitsForCompletion];
+   queue = [queue autorelease];
 
    invocation = [NSInvocation mulleInvocationWithTarget:[Foo class]
                                                selector:@selector( object)];
    [queue addInvocation:invocation];
-   [queue setTerminateWaitsForCompletion:YES];
    [queue start];
    [queue terminate];
 

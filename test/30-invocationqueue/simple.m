@@ -35,12 +35,13 @@ int   main( int argc, const char * argv[])
    if( mulle_objc_global_check_universe( __MULLE_OBJC_UNIVERSENAME__) != mulle_objc_universe_is_ok)
       return( 1);
 #endif
-
-   queue  = [MulleInvocationQueue invocationQueue];
+   queue = [MulleInvocationQueue alloc];
+   queue = [queue initWithCapacity:128
+                     configuration:MulleInvocationQueueMessageDelegateOnExecutionThread];
+   queue = [queue autorelease];
 
    foo = [Foo object];
    [queue setDelegate:foo];
-   [queue setMessageDelegateOnExecutionThread:YES];
 
    s = mulle_strdup( "VfL Bochum 1848");
 
