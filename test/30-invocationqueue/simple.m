@@ -2,7 +2,7 @@
 
 
 
-@interface Foo : NSObject < MulleInvocationQueueDelegate>
+@interface Foo : NSObject < MulleObjCThreadSafe, MulleInvocationQueueDelegate>
 @end
 
 

@@ -1,2 +1,2 @@
 A MulleInvocationQueue is fed with NSInvocations, which it then executes in
-serial in a separate thread.
+serial fashion in a separate thread.
