@@ -6,7 +6,7 @@
 
 #import "import.h"
 
-#define MULLE_INVOCATION_QUEUE_VERSION ((0 << 20) | (0 << 8) | 3)
+#define MULLE_INVOCATION_QUEUE_VERSION ((0UL << 20) | (1 << 8) | 0)
 
 
 @class MulleThread;
@@ -36,12 +36,13 @@ typedef NS_OPTIONS( NSUInteger, MulleInvocationQueueState)
    MulleInvocationQueueError,                     // cancel request fulfilled by "execution"
    MulleInvocationQueueException,
    MulleInvocationQueueCancel,
+   MulleInvocationQueueTerminated,                // no longer usable
    MulleInvocationQueueNotified = 0x8000          // "main" has notified
 };
 
 
 MULLE_INVOCATION_QUEUE_GLOBAL
-NS_OPTIONS_TABLE( MulleInvocationQueueState, 9);
+NS_OPTIONS_TABLE( MulleInvocationQueueState, 10);
 
 
 static inline char   *MulleInvocationQueueStateUTF8String( NSUInteger options)
@@ -55,11 +56,12 @@ static inline BOOL   MulleInvocationQueueStateIsFinished( NSUInteger state)
    state &= ~MulleInvocationQueueNotified;
    switch( state)
    {
-   default                            : return( NO);
-   case MulleInvocationQueueEmpty     :
-   case MulleInvocationQueueCancel    :
-   case MulleInvocationQueueException :
-   case MulleInvocationQueueDone      : return( YES);
+   default                             : return( NO);
+   case MulleInvocationQueueEmpty      :
+   case MulleInvocationQueueCancel     :
+   case MulleInvocationQueueException  :
+   case MulleInvocationQueueTerminated :
+   case MulleInvocationQueueDone       : return( YES);
    }
 }
 
@@ -82,56 +84,91 @@ static inline BOOL   MulleInvocationQueueStateCanBeCancelled( NSUInteger state)
 @protocol MulleInvocationQueueDelegate
 
 // check state
-- (void) invocationQueueDidChangeState:(MulleInvocationQueue *) queue;
+- (void) invocationQueue:(MulleInvocationQueue *) queue
+        didChangeToState:(NSUInteger) state;
 
 @end
 
 
+#define MULLE_INVOCATION_QUEUE_EXECUTION_THREAD_ONLY  MULLE_OBJC_THREADSAFE_METHOD
+#define MULLE_INVOCATION_SETUP_EXECUTION_THREAD_ONLY  MULLE_OBJC_THREADSAFE_METHOD
+
 //
 // TODO: check for invocations pushing things unto the same invocation queue
 //
-
+//       In this plain state, the MulleInvocationQueue will not be usable with
+//       targets that are non threadsafe (or you can only queue a single
+//       invocation for each target). That somewhat defeats the purpose of
+//       an invocationQueue for use with an NSFileHandle for example, where
+//       you want to output blocks in several queue steps. But the NSFileHandle
+//       is not threadsafe and therefore the first invocation will bind it to
+//       the execution thread, and a second invocation will bring misery.
+//       Solution: Use the MulleSingleTargetInvocationQueue, which fixes this
+//       problem.
+//
 @interface MulleInvocationQueue : NSObject
 {
    mulle_thread_mutex_t                _queueLock;
    struct mulle_pointerqueue           _queue;
-   mulle_atomic_pointer_t              _state;
+   mulle_atomic_pointer_t              _atomic_state;
+   mulle_atomic_pointer_t              _executionThread;
    NSInvocation                        *_finalInvocation;  // assign! (retained via _queue logic)
    MulleInvocationQueueConfiguration   _configuration;
+   mulle_absolutetime_t                _startTime;
 }
 
 @property( assign) id <MulleInvocationQueueDelegate>   delegate;
 
-@property( readonly, retain) MulleThread               *executionThread;
+@property( readonly, dynamic, retain) MulleThread      *executionThread;
 @property( readonly, retain) NSInvocation              *failedInvocation;
 @property( readonly, retain) id                        exception;
 
-@property( readonly, dynamic) BOOL   trace                            MULLE_OBJC_THREADSAFE_PROPERTY;                            // send "done", whenever queue is empty (NO)
-@property( readonly, dynamic) BOOL   doneOnEmptyQueue                 MULLE_OBJC_THREADSAFE_PROPERTY;                 // send "done", whenever queue is empty (NO)
-@property( readonly, dynamic) BOOL   catchesExceptions                MULLE_OBJC_THREADSAFE_PROPERTY;                // cancel on exception (NO)
-@property( readonly, dynamic) BOOL   ignoresCaughtExceptions          MULLE_OBJC_THREADSAFE_PROPERTY;          // (NO)
-@property( readonly, dynamic) BOOL   cancelsOnFailedReturnStatus      MULLE_OBJC_THREADSAFE_PROPERTY;      // (NO)
-@property( readonly, dynamic) BOOL   messageDelegateOnExecutionThread MULLE_OBJC_THREADSAFE_PROPERTY; // (NO)
-@property( readonly, dynamic) BOOL   terminateWaitsForCompletion      MULLE_OBJC_THREADSAFE_PROPERTY;      // don't terminate before complete (NO)
+@property( readonly, dynamic) BOOL   trace; // send "done", whenever queue is empty (NO)
+@property( readonly, dynamic) BOOL   doneOnEmptyQueue; // send "done", whenever queue is empty (NO)
+@property( readonly, dynamic) BOOL   catchesExceptions; // cancel on exception (NO)
+@property( readonly, dynamic) BOOL   ignoresCaughtExceptions; // (NO)
+@property( readonly, dynamic) BOOL   cancelsOnFailedReturnStatus; // (NO)
+@property( readonly, dynamic) BOOL   messageDelegateOnExecutionThread; // (NO)
+@property( readonly, dynamic) BOOL   terminateWaitsForCompletion; // don't terminate before complete (NO)
+
+@property( readonly, dynamic) NSUInteger      state; // don't terminate before complete (NO)
 
 
 + (instancetype) invocationQueue;
++ (instancetype) invocationQueueWithCapacity:(NSUInteger) capacity
+                               configuration:(MulleInvocationQueueConfiguration) configuration;
 - (instancetype) initWithCapacity:(NSUInteger) capacity
                     configuration:(MulleInvocationQueueConfiguration) configuration;
 
-- (BOOL) poll;
-- (int) invokeNextInvocation:(id) sender                    MULLE_OBJC_THREADSAFE_METHOD;  // unused sender
-
+//
 // calls cancel if not appShouldWaitForCompletion, else blocks
+// the delegate will be nil after a succesful call
+// 0: OK
+// -1: fail (no thread running)
+//
 - (int) terminate                                           MULLE_OBJC_THREADSAFE_METHOD;
 - (void) preempt                                            MULLE_OBJC_THREADSAFE_METHOD;
-- (void) cancelWhenIdle                                     MULLE_OBJC_THREADSAFE_METHOD;
-- (void) start                                              MULLE_OBJC_THREADSAFE_METHOD;
+
+// can not be called from the execution thread
+- (void) cancelWhenIdle                                     MULLE_INVOCATION_SETUP_EXECUTION_THREAD_ONLY;
+- (void) start                                              MULLE_INVOCATION_SETUP_EXECUTION_THREAD_ONLY;
+
+// same as start, but use a subclass of MulleThread
+- (void) startWithThreadClass:(Class) threadClass           MULLE_INVOCATION_SETUP_EXECUTION_THREAD_ONLY;
 
 - (void) addInvocation:(NSInvocation *) invocation          MULLE_OBJC_THREADSAFE_METHOD;
 - (void) addFinalInvocation:(NSInvocation *) invocation     MULLE_OBJC_THREADSAFE_METHOD;
 
-- (NSUInteger) state                                        MULLE_OBJC_THREADSAFE_METHOD;
+
+//
+// method **not** to be used by the executionThread and code that is "inside"
+// the invocations
+//
+- (BOOL) poll                                               MULLE_INVOCATION_SETUP_EXECUTION_THREAD_ONLY;
+
+// only useful for testing, as this runs the MulleInvocationQueue synchronously
+- (int) invokeNextInvocation:(id) sender                    MULLE_OBJC_THREADSAFE_METHOD;  // unused sender
+
 
 
 @end

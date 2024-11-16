@@ -8,13 +8,12 @@
 
 @implementation Foo
 
-- (void) invocationQueueDidChangeState:(MulleInvocationQueue *) queue
+- (void) invocationQueue:(MulleInvocationQueue *) queue
+        didChangeToState:(NSUInteger) state
 {
-   NSUInteger   state;
-
-   state = [queue state];
    fprintf( stderr, "%s\n", MulleInvocationQueueStateUTF8String( state));
 }
+
 
 - (void) printUTF8String:(char *) s
 {

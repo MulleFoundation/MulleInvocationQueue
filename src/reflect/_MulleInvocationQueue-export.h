@@ -13,6 +13,7 @@
 #define _mulle_invocation_queue__export_h__
 
 
+#import "MulleSingleTargetInvocationQueue.h"
 #import "NSInvocation+MulleReturnStatus.h"
 #import "NSInvocation+UTF8String.h"
 #import "MulleObjCLoader+MulleInvocationQueue.h"

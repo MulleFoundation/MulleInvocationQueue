@@ -1,7 +1,7 @@
 {
    project =
    {
-      description="🚶🚶🚶 MulleInvocationQueue runs code in a separate thread";
+      description="🚶🚶🚶 MulleInvocationQueue runs methods in a separate thread";
       domain="github";
       name="MulleInvocationQueue";
       user="MulleFoundation";
