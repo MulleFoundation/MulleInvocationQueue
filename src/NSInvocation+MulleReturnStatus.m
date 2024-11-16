@@ -94,7 +94,7 @@
    }
 
    // for ints and doubles everything not zero is a YES
-   mulle_flexarray_do( buf, char, 128, length)
+   mulle_alloca_do( buf, char, length)
    {
       [self getReturnValue:buf];
       for( p = buf, sentinel = &buf[ length]; p < sentinel; p++)

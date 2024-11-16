@@ -1,9 +1,9 @@
 # MulleInvocationQueue
 
-#### 🚶🚶🚶 MulleInvocationQueue runs code in a separate thread
+#### 🚶🚶🚶 MulleInvocationQueue runs methods in a separate thread
 
 A MulleInvocationQueue is fed with NSInvocations, which it then executes in
-serial in a separate thread.
+serial fashion in a separate thread.
 
 
 | Release Version                                       | Release Notes
@@ -11,39 +11,43 @@ serial in a separate thread.
 | ![Mulle kybernetiK tag](https://img.shields.io/github/tag/MulleFoundation/MulleInvocationQueue.svg?branch=release) [![Build Status](https://github.com/MulleFoundation/MulleInvocationQueue/workflows/CI/badge.svg?branch=release)](//github.com/MulleFoundation/MulleInvocationQueue/actions) | [RELEASENOTES](RELEASENOTES.md) |
 
 
-## MulleThread
+## MulleInvocationQueue
 
-The MulleThread is the combination of a **NSConditionLock** and **NSThread**.
-The thread idles waiting for work. If there is something to do, you `-nudge`
-the thread and it runs it's "target" / "selector". Then the thread returns
-to idle, waiting for the next `-nudge`.
-
-MulleThread also manages a `NSAutoreleasePool` for your code.
-
-
-Create a thread and start it:
+You create a queue on **your** current thread
 
 ``` objc
-thread = [MulleThread mulleThreadWithTarget:foo
-                                   selector:@selector( runServer:)
-                                     object:nil];
-[thread start];
+   queue = [MulleInvocationQueue alloc];
+   queue = [queue initWithCapacity:128
+                     configuration:MulleInvocationQueueMessageDelegateOnExecutionThread];
+   queue = [queue autorelease];
 ```
 
-The initial `-start` will not call "target" / "selector" yet. The thread waits
-for a `-nudge`. You can `-preempt` the thread at any time. For a more graceful
-shutdown use `-cancelWhenIdle`. The thread code can `-cancel` itself at any
-time. Use of `+exit` to finish a "MulleThread" is bad style.
+Then you feed the invocation queue with invocations still from **your** thread.
+These invocations need not be to methods, written in a threadsafe manner, as
+long as the target is now exclusively used by the **MulleInvocationQueue** until
+all invocations are processed:
 
 
 ``` objc
-[thread nudge];
-[thread preempt];
-[thread cancelWhenIdle];
+      invocation = [NSInvocation mulleInvocationWithTarget:foo
+         selector:@selector( printUTF8String:), s];
+
+      [queue addInvocation:invocation];
 ```
 
-To wait for a thread to complete use `-mulleJoin`. But you need to `-preempt`
-or `-cancelWhenIdle` before.
+It is not necessary, but it will likely be helpful to mark the last invocation
+as the "final" invocation. This could be a `-close` on a `NSFilehandle` for
+example:
+
+``` objc
+   invocation = [NSInvocation mulleInvocationWithTarget:foo
+      selector:@selector( printUTF8String:), s];
+
+   [queue addFinalInvocation:invocation];
+```
+
+With `[queue start]` the queue is now executing in parallel with the calling
+thread.
 
 
 
@@ -71,8 +75,6 @@ mulle-sde add github:MulleFoundation/MulleInvocationQueue
 
 ## Install
 
-### Install with mulle-sde
-
 Use [mulle-sde](//github.com/mulle-sde) to build and install MulleInvocationQueue and all dependencies:
 
 ``` sh
@@ -80,7 +82,7 @@ mulle-sde install --prefix /usr/local \
    https://github.com/MulleFoundation/MulleInvocationQueue/archive/latest.tar.gz
 ```
 
-### Manual Installation
+### Legacy Installation
 
 Install the requirements:
 

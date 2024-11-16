@@ -12,6 +12,7 @@ endif()
 #
 set( SOURCES
 src/MulleInvocationQueue.m
+src/MulleSingleTargetInvocationQueue.m
 src/NSInvocation+MulleReturnStatus.m
 src/NSInvocation+UTF8String.m
 )

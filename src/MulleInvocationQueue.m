@@ -13,7 +13,7 @@
 @class MulleInvocationQueue;
 
 
-NS_OPTIONS_TABLE( MulleInvocationQueueState, 9) =
+NS_OPTIONS_TABLE( MulleInvocationQueueState, 10) =
 {
    NS_OPTIONS_ITEM( MulleInvocationQueueInit),
    NS_OPTIONS_ITEM( MulleInvocationQueueIdle),
@@ -23,6 +23,7 @@ NS_OPTIONS_TABLE( MulleInvocationQueueState, 9) =
    NS_OPTIONS_ITEM( MulleInvocationQueueError),
    NS_OPTIONS_ITEM( MulleInvocationQueueException),
    NS_OPTIONS_ITEM( MulleInvocationQueueCancel),
+   NS_OPTIONS_ITEM( MulleInvocationQueueTerminated),
    NS_OPTIONS_ITEM( MulleInvocationQueueNotified)
 };
 
@@ -30,17 +31,24 @@ NS_OPTIONS_TABLE( MulleInvocationQueueState, 9) =
 @implementation MulleInvocationQueue
 
 
+static void   _MulleInvocationQueuePush( MulleInvocationQueue *self,
+                                         NSInvocation *invocation)
+{
+   [invocation retainArguments];
+   [invocation retain];
+
+   [invocation mulleRelinquishAccess];
+   mulle_pointerqueue_push( &self->_queue, invocation);
+}
+
+
 static void   MulleInvocationQueuePush( MulleInvocationQueue *self,
                                         NSInvocation *invocation)
 {
    mulle_thread_mutex_do( self->_queueLock)
    {
-      [invocation retainArguments];
-      [invocation retain];
+      _MulleInvocationQueuePush( self, invocation);
       assert( ! self->_finalInvocation);
-
-      [invocation mulleRelinquishAccess];
-      mulle_pointerqueue_push( &self->_queue, invocation);
    }
 }
 
@@ -50,12 +58,9 @@ static void   MulleInvocationQueueFinalPush( MulleInvocationQueue *self,
 {
    mulle_thread_mutex_do( self->_queueLock)
    {
-      [invocation retainArguments];
-      [invocation retain];
+      _MulleInvocationQueuePush( self, invocation);
+      assert( ! self->_finalInvocation);
       self->_finalInvocation = invocation;
-
-      [invocation mulleRelinquishAccess];
-      mulle_pointerqueue_push( &self->_queue, invocation);
    }
 }
 
@@ -73,6 +78,7 @@ static NSInvocation  *MulleInvocationQueuePop( MulleInvocationQueue *self,
 
       if( isFinal)
          *isFinal = (invocation == self->_finalInvocation);
+      self->_finalInvocation = nil;
    }
    return( invocation);
 }
@@ -85,7 +91,12 @@ static void   MulleInvocationQueueDiscardInvocations( MulleInvocationQueue *self
    mulle_thread_mutex_do( self->_queueLock)
    {
       while( (invocation = mulle_pointerqueue_pop( &self->_queue)))
+      {
+         // gainAccess will autorelease the invocation into the current
+         // thread, but is this really needed ?
+         [invocation mulleGainAccess];
          [invocation autorelease];
+      }
    }
 }
 
@@ -102,7 +113,7 @@ static void   MulleInvocationQueueFinalizing( MulleInvocationQueue *self)
 
 + (instancetype) invocationQueue
 {
-   return( [[[self alloc] initWithCapacity:128
+   return( [[[self alloc] initWithCapacity:0
                              configuration:0] autorelease]);
 }
 
@@ -110,11 +121,26 @@ static void   MulleInvocationQueueFinalizing( MulleInvocationQueue *self)
 - (instancetype) initWithCapacity:(NSUInteger) capacity
                     configuration:(MulleInvocationQueueConfiguration) configuration
 {
+   if( ! capacity)
+      capacity = 128;
    mulle_thread_mutex_init( &_queueLock);
    mulle_pointerqueue_init( &_queue, capacity / 8, 8, MulleObjCInstanceGetAllocator( self));
    _configuration = configuration;
 
    return( self);
+}
+
+
++ (instancetype) invocationQueueWithCapacity:(NSUInteger) capacity
+                               configuration:(MulleInvocationQueueConfiguration) configuration
+{
+   MulleInvocationQueue   *queue;
+
+   queue = [self alloc];
+   queue = [queue initWithCapacity:capacity
+                     configuration:configuration];
+   queue = [queue autorelease];
+   return( queue);
 }
 
 
@@ -141,9 +167,12 @@ static void   MulleInvocationQueueFinalizing( MulleInvocationQueue *self)
 - (void) dealloc
 {
    NSInvocation   *invocation;
+   MulleThread    *executionThread;
 
    assert( ! _failedInvocation);
-   [_executionThread release];
+
+   executionThread = (MulleThread *) _mulle_atomic_pointer_read_nonatomic( &_executionThread);
+   [executionThread release];
    [_exception release];
 
    mulle_thread_mutex_done( &_queueLock);
@@ -200,10 +229,12 @@ static void   MulleInvocationQueueFinalizing( MulleInvocationQueue *self)
 }
 
 
-
-- (BOOL) isExecutionThread
+- (BOOL) isExecutionThread       MULLE_OBJC_THREADSAFE_METHOD
 {
-   return( ! _executionThread || [NSThread currentThread] == _executionThread);
+   MulleThread   *executionThread;
+
+   executionThread = (MulleThread *) _mulle_atomic_pointer_read( &_executionThread);
+   return( ! executionThread || [NSThread currentThread] == executionThread);
 }
 
 
@@ -211,7 +242,7 @@ static void   MulleInvocationQueueFinalizing( MulleInvocationQueue *self)
 {
    NSUInteger   state;
 
-   state = (NSUInteger) _mulle_atomic_pointer_read( &_state);
+   state = (NSUInteger) _mulle_atomic_pointer_read( &_atomic_state);
    if( _configuration & MulleInvocationQueueTrace)
       fprintf( stderr, "queue %p state is %s\n", self, MulleInvocationQueueStateUTF8String( state));
    return( state);
@@ -220,20 +251,15 @@ static void   MulleInvocationQueueFinalizing( MulleInvocationQueue *self)
 
 - (void) _setState:(NSUInteger) state     MULLE_OBJC_THREADSAFE_METHOD
 {
-   void   *expect;
+   assert( (NSUInteger) _mulle_atomic_pointer_read( &_atomic_state) != state);
 
-   _mulle_atomic_pointer_write( &_state, (void *) state);
-
+   _mulle_atomic_pointer_write( &_atomic_state, (void *) state);
    if( (_configuration & MulleInvocationQueueMessageDelegateOnExecutionThread) &&
        [self isExecutionThread])
    {
-      [_delegate invocationQueueDidChangeState:self];
-      do
-      {
-         expect = _mulle_atomic_pointer_read( &_state);
-         state  = (NSUInteger) expect | MulleInvocationQueueNotified;
-      }
-      while( ! _mulle_atomic_pointer_cas( &_state, (void *) state, expect));
+      [_delegate invocationQueue:self
+                didChangeToState:state];
+      _mulle_atomic_pointer_write( &_atomic_state, (void *) (state | MulleInvocationQueueNotified));
    }
 }
 
@@ -252,17 +278,35 @@ static void   MulleInvocationQueueFinalizing( MulleInvocationQueue *self)
 
 - (void) addInvocation:(NSInvocation *) invocation
 {
+   MulleThread   *executionThread;
+
    MulleInvocationQueuePush( self, invocation);
 
-   [_executionThread nudge];
+   executionThread = (MulleThread *) _mulle_atomic_pointer_read( &_executionThread);
+   [executionThread nudge];
 }
 
 
 - (void) addFinalInvocation:(NSInvocation *) invocation
 {
+   MulleThread   *executionThread;
+
    MulleInvocationQueueFinalPush( self, invocation);
 
-   [_executionThread nudge];
+   executionThread = (MulleThread *) _mulle_atomic_pointer_read( &_executionThread);
+   [executionThread nudge];
+}
+
+
+- (NSInvocation *) popInvocation:(BOOL *) isFinal
+{
+   return( MulleInvocationQueuePop( self, isFinal));
+}
+
+
+- (void) didInvokeFinalInvocation:(NSInvocation *) invocation
+{
+   MulleInvocationQueueFinalizing( self);   // do this *after* _setState:
 }
 
 
@@ -273,7 +317,7 @@ static void   MulleInvocationQueueFinalizing( MulleInvocationQueue *self)
 
    assert( [self isExecutionThread]);
 
-   invocation = MulleInvocationQueuePop( self, &isFinal);
+   invocation = [self popInvocation:&isFinal];
    if( ! invocation)
    {
       if( _configuration & MulleInvocationQueueDoneOnEmptyQueue)
@@ -326,7 +370,7 @@ static void   MulleInvocationQueueFinalizing( MulleInvocationQueue *self)
    if( isFinal)
    {
       [self _setState:MulleInvocationQueueDone];
-      MulleInvocationQueueFinalizing( self);   // do this *after* _setState:
+      [self didInvokeFinalInvocation:invocation]; // do this *after* _setState:
       return( MulleThreadCancelMain);
    }
 
@@ -334,47 +378,85 @@ static void   MulleInvocationQueueFinalizing( MulleInvocationQueue *self)
 }
 
 
-- (void) start
+- (void) startWithThreadClass:(Class) mulleThreadSubclass
 {
-   NSUInteger   options;
+   NSInvocation   *invocation;
+   Class          mulleThreadClass;
+   MulleThread    *executionThread;
 
-   if( ! _executionThread)
+   mulleThreadClass = [MulleThread class];
+   if( ! mulleThreadSubclass)
+      mulleThreadSubclass = mulleThreadClass;
+   assert( [self state] != MulleInvocationQueueTerminated);
+
+retry:
+   executionThread = (MulleThread *) _mulle_atomic_pointer_read( &_executionThread);
+   if( ! executionThread)
    {
-      options          = MulleThreadDontRetainTarget|MulleThreadDontReleaseTarget;
-
       // this is the only time _executionThread must be written to before
       // finalize/dealloc
-      _executionThread = [[MulleThread alloc] mulleInitWithTarget:self
-                                                         selector:@selector( invokeNextInvocation:)
-                                                           object:nil
-                                                          options:options];
+      //
+      // TODO: shouldn't there be a loop around invokeNextInvocation: ???
+      //
+      invocation = [NSInvocation mulleInvocationWithTarget:self
+                                                  selector:@selector( invokeNextInvocation:)
+                                                    object:nil];
+      // do not retain self here as it would create a cycle
+      executionThread = [[mulleThreadSubclass alloc] mulleInitWithInvocation:invocation];
+      [executionThread mulleSetNameUTF8String:"MulleInvocationQueueThread"];
+      if( ! _mulle_atomic_pointer_cas( &_executionThread, executionThread, NULL))
+      {
+         [executionThread autorelease];
+         goto retry;
+      }
    }
-   [_executionThread start];
-}  
+
+   assert( [executionThread isKindOfClass:mulleThreadSubclass]);
+
+   _startTime = mulle_absolutetime_now();
+   [executionThread mulleStart];
+}
+
+
+- (void) start
+{
+   [self startWithThreadClass:Nil];
+}
 
 
 - (void) preempt
 {
-   [_executionThread preempt];
+   MulleThread    *executionThread;
+
+   executionThread = (MulleThread *) _mulle_atomic_pointer_read( &_executionThread);
+   [executionThread preempt];
+   [executionThread mulleJoin];
 }
 
 
 - (void) cancelWhenIdle
 {
-   NSUInteger   state;
+   NSUInteger    state;
+   MulleThread   *executionThread;
 
-   if( ! _executionThread)
+   executionThread = (MulleThread *) _mulle_atomic_pointer_read( &_executionThread);
+   if( ! executionThread)
+   {
+      // if the executionThread never ran, reclaim invocations for
+      // caller thread
+      MulleInvocationQueueDiscardInvocations( self);
       return;
+   }
 
-   assert( [NSThread currentThread] != _executionThread);
+   assert( [NSThread currentThread] != executionThread);
 
    for(;;)
    {
-      state = [self state];
-      switch( state & ~MulleInvocationQueueNotified)
+      state = [self state] & ~MulleInvocationQueueNotified;
+      switch( state)
       {
       case MulleInvocationQueueInit      :
-         [_executionThread nudge]; // ????
+         [executionThread nudge]; // ????
          break;
 
       case MulleInvocationQueueRun       :
@@ -386,33 +468,67 @@ static void   MulleInvocationQueueFinalizing( MulleInvocationQueue *self)
       case MulleInvocationQueueError     :
       case MulleInvocationQueueException :
       case MulleInvocationQueueCancel    :
-         [_executionThread cancelWhenIdle];
+         [executionThread cancelWhenIdle];
+         [executionThread mulleJoin];
+         return;
+
+      case MulleInvocationQueueTerminated :
+         assert( 0 || "cancelWhenIdle called on a already terminated queue");
          return;
       }
-      [_executionThread blockUntilNoLongerBusy];
+      [executionThread blockUntilNoLongerBusy];
    }
 }
 
 
 - (int) terminate
 {
-   if( ! _executionThread)
+   MulleThread   *executionThread;
+
+   executionThread = (MulleThread *) _mulle_atomic_pointer_read( &_executionThread);
+   if( ! executionThread)
       return( -1);
 
    if( _configuration & MulleInvocationQueueTerminateWaitsForCompletion)
       [self cancelWhenIdle];
    else
-      [_executionThread preempt];
+      [executionThread preempt];
+      // get execution thread to release invocation
+   [executionThread mulleJoin];
+
+   [executionThread autorelease];
+   _mulle_atomic_pointer_write( &_executionThread, NULL);
+
+   // this could be owned by the thread exclusively, so we nil it
+   // to not send another message
+   _delegate = nil;
+
+   // conceivably you could reuse the queue, but why ?
+   [self _setState:MulleInvocationQueueTerminated];
+
    return( 0);
+}
+
+
+// the executionThread most likely need not be atomic, this is just
+// conservatism here, which shouldn't really hurt
+- (MulleThread *) executionThread
+{
+   MulleThread   *executionThread;
+
+   executionThread = (MulleThread *) _mulle_atomic_pointer_read( &_executionThread);
+   return( executionThread);
 }
 
 
 // returns 1 if running
 - (BOOL) poll
 {
-   NSUInteger   state;
+   NSUInteger     state;
+   MulleThread    *executionThread;
 
-   assert( [NSThread currentThread] != _executionThread);
+   executionThread = (MulleThread *) _mulle_atomic_pointer_read( &_executionThread);
+   assert( [NSThread currentThread] != executionThread);
 
    state = [self state];
    if( ! (state & MulleInvocationQueueNotified))
@@ -420,8 +536,9 @@ static void   MulleInvocationQueueFinalizing( MulleInvocationQueue *self)
       if( ! (_configuration & MulleInvocationQueueMessageDelegateOnExecutionThread) &&
           ! [self isExecutionThread])
       {
-         [self _setState:state|MulleInvocationQueueNotified];
-         [_delegate invocationQueueDidChangeState:self];
+         [self _setState:state | MulleInvocationQueueNotified];
+         [_delegate invocationQueue:self
+                   didChangeToState:state];
       }
    }
 

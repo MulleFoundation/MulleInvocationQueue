@@ -8,13 +8,12 @@
 
 @implementation Foo
 
-- (void) invocationQueueDidChangeState:(MulleInvocationQueue *) queue
+- (void) invocationQueue:(MulleInvocationQueue *) queue
+        didChangeToState:(NSUInteger) state
 {
-   NSUInteger   state;
-
-   state = [queue state];
    fprintf( stderr, "%s\n", MulleInvocationQueueStateUTF8String( state));
 }
+
 
 - (void) sleep
 {
@@ -37,7 +36,7 @@ int   main( int argc, const char * argv[])
       return( 1);
 #endif
 
-   printf( "create\n");
+   printf( "# create\n");
    queue = [MulleInvocationQueue alloc];
    queue = [queue initWithCapacity:128
                      configuration:MulleInvocationQueueMessageDelegateOnExecutionThread
@@ -49,18 +48,17 @@ int   main( int argc, const char * argv[])
    [queue setDelegate:foo];
 
    invocation = [NSInvocation mulleInvocationWithTarget:foo
-      selector:@selector( sleep)];
-
-   printf( "add\n");
+                                               selector:@selector( sleep)];
+   printf( "# add\n");
    [queue addFinalInvocation:invocation];
 
-   printf( "start\n");
+   printf( "# start\n");
    [queue start];
 
-   printf( "terminate\n");
+   printf( "# terminate\n");
    [queue terminate];
 
-   printf( "exit\n");
+   printf( "# exit\n");
 
    return( 0);
 }
