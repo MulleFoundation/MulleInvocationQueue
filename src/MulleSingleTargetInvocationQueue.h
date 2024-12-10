@@ -48,7 +48,10 @@
 // the property set to nil
 //
 @interface MulleSingleTargetInvocationQueue : MulleInvocationQueue
+{
+   char    _executionThreadGainedAccessToTarget;
+}
 
-@property( readonly, assign) id   target;
+@property( readonly, retain) id   target;
 
 @end

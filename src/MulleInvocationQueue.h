@@ -6,7 +6,7 @@
 
 #import "import.h"
 
-#define MULLE_INVOCATION_QUEUE_VERSION ((0UL << 20) | (1 << 8) | 0)
+#define MULLE_INVOCATION_QUEUE_VERSION ((0UL << 20) | (1 << 8) | 1)
 
 
 @class MulleThread;
@@ -97,14 +97,9 @@ static inline BOOL   MulleInvocationQueueStateCanBeCancelled( NSUInteger state)
 // TODO: check for invocations pushing things unto the same invocation queue
 //
 //       In this plain state, the MulleInvocationQueue will not be usable with
-//       targets that are non threadsafe (or you can only queue a single
-//       invocation for each target). That somewhat defeats the purpose of
-//       an invocationQueue for use with an NSFileHandle for example, where
-//       you want to output blocks in several queue steps. But the NSFileHandle
-//       is not threadsafe and therefore the first invocation will bind it to
-//       the execution thread, and a second invocation will bring misery.
-//       Solution: Use the MulleSingleTargetInvocationQueue, which fixes this
-//       problem.
+//       targets that are not threadsafe (or you can only queue a single
+//       invocation for each target).
+//       See then if MulleSingleTargetInvocationQueue fits the bill.
 //
 @interface MulleInvocationQueue : NSObject
 {
