@@ -47,35 +47,38 @@
 
 @implementation MulleSingleTargetInvocationQueue
 
-- (void) addInvocation:(NSInvocation *) invocation
+- (void) _prepareInvocation:(NSInvocation *) invocation
 {
    id   target;
 
    target = [invocation target];
    if( ! target)
       [NSException raise:NSInvalidArgumentException
-                  format:@"invocation target is nil MulleSingleTargetInvocationQueue -addInvocation:"];
+                  format:@"invocation target is nil for MulleSingleTargetInvocationQueue"];
+
    if( ! _target)
-      _target = target;
-   else
-      [invocation setTarget:nil];
+   {
+      _target = [target retain];
+      [_target mulleRelinquishAccess];
+   }
+
+   // the invocation also retains the target with this, so we gotta undo this
+   if( [invocation argumentsRetained])
+      [target autorelease];
+   [invocation setTarget:nil];
+}
+
+
+- (void) addInvocation:(NSInvocation *) invocation
+{
+   [self _prepareInvocation:invocation];
    [super addInvocation:invocation];
 }
 
 
 - (void) addFinalInvocation:(NSInvocation *) invocation
 {
-   id   target;
-
-   target = [invocation target];
-   if( ! target)
-      [NSException raise:NSInvalidArgumentException
-                  format:@"invocation target is nil MulleSingleTargetInvocationQueue -addInvocation:"];
-   if( ! _target)
-      _target = target;
-   else
-      [invocation setTarget:nil];
-
+   [self _prepareInvocation:invocation];
    [super addFinalInvocation:invocation];
 }
 
@@ -85,8 +88,17 @@
    NSInvocation   *invocation;
 
    invocation = [super popInvocation:isFinal];
-   if( _target)
-      [invocation setTarget:_target];
+   assert( [invocation argumentsRetained]);
+   assert( ! [invocation target]);
+
+   if( ! _executionThreadGainedAccessToTarget)
+   {
+      [_target mulleGainAccess];
+      _executionThreadGainedAccessToTarget = YES;
+   }
+
+   [invocation setTarget:[_target retain]];
+
    return( invocation);
 }
 
@@ -94,6 +106,9 @@
 - (void) didInvokeFinalInvocation:(NSInvocation *) invocation
 {
    [super didInvokeFinalInvocation:invocation];
+
+   // not sure how this can be NO ever
+   assert( _executionThreadGainedAccessToTarget);
    [_target mulleRelinquishAccess];
 }
 
@@ -101,6 +116,8 @@
 - (void) cancelWhenIdle
 {
    [super cancelWhenIdle];
+
+   [_target autorelease];
    [_target mulleGainAccess];
    _target = nil;
 }
@@ -110,7 +127,9 @@
 {
    [super preempt];
    
+   [_target autorelease];
    [_target mulleGainAccess];
    _target = nil;
 }
+
 @end

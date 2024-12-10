@@ -1,3 +1,7 @@
+### 0.1.1
+
+* fix MulleSingleTargetInvocationQueue (tentatively) for TAO
+
 ## 0.1.0
 
 

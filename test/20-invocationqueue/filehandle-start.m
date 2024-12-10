@@ -1,7 +1,7 @@
 #import <MulleInvocationQueue/MulleInvocationQueue.h>
 
 
-@interface Filehandle : NSObject
+@interface Filehandle : NSObject < MulleObjCThreadSafe>
 
 - (void) printUTF8String:(char *) s;
 
@@ -14,6 +14,7 @@
 {
    printf( "%s\n", s);
 }
+
 
 @end
 
@@ -35,20 +36,23 @@ int   main( int argc, const char * argv[])
    queue = [queue autorelease];
    [queue start];
 
-
    fout       = [Filehandle object];
 
    invocation = [NSInvocation mulleInvocationWithTarget:fout
                                                selector:@selector( printUTF8String:), "VfL"];
    [queue addInvocation:invocation];
+
+   // this will/can already fail, because 'fout' has already been transferred
+   // to the MulleInvocationQueue thread.
    invocation = [NSInvocation mulleInvocationWithTarget:fout
                                                selector:@selector( printUTF8String:), "Bochum"];
    [queue addFinalInvocation:invocation];
 
+
    // queue has already started and potentially all invocations have been
    // worked on, which means that fout would now be invalid as it has been
    // passed to the thread/queue. This is somewhat inconvenient though.
-   // if you retain/release though, "fout" will still belong to the wrong
+   // if you retain/release, "fout" will still belong to the wrong
    // thread
    [queue cancelWhenIdle];
 
