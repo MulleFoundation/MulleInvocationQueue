@@ -6,7 +6,7 @@
 
 #import "import.h"
 
-#define MULLE_INVOCATION_QUEUE_VERSION ((0UL << 20) | (1 << 8) | 1)
+#define MULLE_INVOCATION_QUEUE_VERSION ((0UL << 20) | (1 << 8) | 2)
 
 
 @class MulleThread;

@@ -52,9 +52,7 @@
    id   target;
 
    target = [invocation target];
-   if( ! target)
-      [NSException raise:NSInvalidArgumentException
-                  format:@"invocation target is nil for MulleSingleTargetInvocationQueue"];
+   assert( target || "invocation target is nil for MulleSingleTargetInvocationQueue");
 
    if( ! _target)
    {

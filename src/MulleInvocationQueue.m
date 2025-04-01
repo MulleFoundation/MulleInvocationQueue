@@ -525,10 +525,12 @@ retry:
 - (BOOL) poll
 {
    NSUInteger     state;
+#ifndef NDEBUG
    MulleThread    *executionThread;
 
    executionThread = (MulleThread *) _mulle_atomic_pointer_read( &_executionThread);
    assert( [NSThread currentThread] != executionThread);
+#endif
 
    state = [self state];
    if( ! (state & MulleInvocationQueueNotified))
