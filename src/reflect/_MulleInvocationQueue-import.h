@@ -26,21 +26,6 @@
 //        (use `mulle-sourcetree-to-c --unames` to list known values)
 #import <MulleThread/MulleThread.h>   // MulleThread
 
-// To remove the following dependency (headers and library) completely:
-//   `mulle-sde dependency remove MulleFoundationBase`
-// (Use 46519FAC-A31D-47EF-AFF2-7A636B4844DF instead of MulleFoundationBase, if there are duplicate entries)
-//
-// You can tweak the following #import with these commands:
-//    remove #import      : `mulle-sde dependency mark MulleFoundationBase no-header`
-//    rename              : `mulle-sde dependency|library set MulleFoundationBase include whatever.h`
-//    reorder             : `mulle-sde dependency move MulleFoundationBase <up|down>`
-//    toggle #import      : `mulle-sde dependency mark MulleFoundationBase [no-]import`
-//    toggle public       : `mulle-sde dependency mark MulleFoundationBase [no-]public`
-//    toggle optional     : `mulle-sde dependency mark MulleFoundationBase [no-]require`
-//    remove for platform : `mulle-sde dependency mark MulleFoundationBase no-platform-<uname>`
-//        (use `mulle-sourcetree-to-c --unames` to list known values)
-#import <MulleFoundationBase/MulleFoundationBase.h>   // MulleFoundationBase
-
 #ifdef __has_include
 # if __has_include( "_MulleInvocationQueue-include.h")
 #  include "_MulleInvocationQueue-include.h"
