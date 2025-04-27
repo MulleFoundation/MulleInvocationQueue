@@ -3,6 +3,8 @@
    {
       description="🚶🚶🚶 MulleInvocationQueue runs methods in a separate thread";
       domain="github";
+      language="c";
+      dialect="objc";
       name="MulleInvocationQueue";
       user="MulleFoundation";
       repo="MulleInvocationQueue";
@@ -17,14 +19,6 @@
          name="MulleThread";
          repo="MulleThread";
          url="https://github.com/MulleFoundation/MulleThread";
-         user="MulleFoundation";
-      },
-      {
-         description="🧱 MulleFoundationBase amalgamates Foundations projects";
-         domain="github";
-         name="MulleFoundationBase";
-         repo="MulleFoundationBase";
-         url="https://github.com/MulleFoundation/MulleFoundationBase";
          user="MulleFoundation";
       },
       {

@@ -6,9 +6,9 @@ A MulleInvocationQueue is fed with NSInvocations, which it then executes in
 serial fashion in a separate thread.
 
 
-| Release Version                                       | Release Notes
-|-------------------------------------------------------|--------------
-| ![Mulle kybernetiK tag](https://img.shields.io/github/tag/MulleFoundation/MulleInvocationQueue.svg) [![Build Status](https://github.com/MulleFoundation/MulleInvocationQueue/workflows/CI/badge.svg)](//github.com/MulleFoundation/MulleInvocationQueue/actions) | [RELEASENOTES](RELEASENOTES.md) |
+| Release Version                                       | Release Notes  | AI Documentation
+|-------------------------------------------------------|----------------|---------------
+| ![Mulle kybernetiK tag](https://img.shields.io/github/tag/MulleFoundation/MulleInvocationQueue.svg) [![Build Status](https://github.com/MulleFoundation/MulleInvocationQueue/workflows/CI/badge.svg)](//github.com/MulleFoundation/MulleInvocationQueue/actions) | [RELEASENOTES](RELEASENOTES.md) | [DeepWiki for MulleInvocationQueue](https://deepwiki.com/MulleFoundation/MulleInvocationQueue)
 
 
 ## MulleInvocationQueue
@@ -58,7 +58,6 @@ thread.
 |   Requirement         | Release Version  | Description
 |-----------------------|------------------|---------------
 | [MulleThread](https://github.com/MulleFoundation/MulleThread) | ![Mulle kybernetiK tag](https://img.shields.io/github/tag/MulleFoundation/MulleThread.svg) [![Build Status](https://github.com/MulleFoundation/MulleThread/workflows/CI/badge.svg?branch=release)](https://github.com/MulleFoundation/MulleThread/actions/workflows/mulle-sde-ci.yml) | 🍝 MulleThread sleeps until nudged
-| [MulleFoundationBase](https://github.com/MulleFoundation/MulleFoundationBase) | ![Mulle kybernetiK tag](https://img.shields.io/github/tag/MulleFoundation/MulleFoundationBase.svg) [![Build Status](https://github.com/MulleFoundation/MulleFoundationBase/workflows/CI/badge.svg?branch=release)](https://github.com/MulleFoundation/MulleFoundationBase/actions/workflows/mulle-sde-ci.yml) | 🧱 MulleFoundationBase amalgamates Foundations projects
 | [mulle-objc-list](https://github.com/mulle-objc/mulle-objc-list) | ![Mulle kybernetiK tag](https://img.shields.io/github/tag/mulle-objc/mulle-objc-list.svg) [![Build Status](https://github.com/mulle-objc/mulle-objc-list/workflows/CI/badge.svg?branch=release)](https://github.com/mulle-objc/mulle-objc-list/actions/workflows/mulle-sde-ci.yml) | 📒 Lists mulle-objc runtime information contained in executables.
 
 ### You are here
@@ -89,7 +88,6 @@ Install the requirements:
 | Requirements                                 | Description
 |----------------------------------------------|-----------------------
 | [MulleThread](https://github.com/MulleFoundation/MulleThread)             | 🍝 MulleThread sleeps until nudged
-| [MulleFoundationBase](https://github.com/MulleFoundation/MulleFoundationBase)             | 🧱 MulleFoundationBase amalgamates Foundations projects
 | [mulle-objc-list](https://github.com/mulle-objc/mulle-objc-list)             | 📒 Lists mulle-objc runtime information contained in executables.
 
 Download the latest [tar](https://github.com/MulleFoundation/MulleInvocationQueue/archive/refs/tags/latest.tar.gz) or [zip](https://github.com/MulleFoundation/MulleInvocationQueue/archive/refs/tags/latest.zip) archive and unpack it.
