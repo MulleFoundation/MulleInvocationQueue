@@ -197,24 +197,6 @@ export MULLE_THREAD_BRANCH="prerelease"
 
 
 #
-# MulleFoundationBase nodetype: ${MULLE_FOUNDATION_BASE_NODETYPE:-tar}
-#
-export MULLE_FOUNDATION_BASE_NODETYPE="git"
-
-
-#
-# MulleFoundationBase url: ${MULLE_FOUNDATION_BASE_URL:-https://github.com/MulleFoundation/MulleFoundationBase/archive/${MULLE_TAG}.tar.gz}
-#
-export MULLE_FOUNDATION_BASE_URL="https://github.com/MulleFoundation/MulleFoundationBase.git"
-
-
-#
-# MulleFoundationBase branch: ${MULLE_FOUNDATION_BASE_BRANCH}
-#
-export MULLE_FOUNDATION_BASE_BRANCH="prerelease"
-
-
-#
 # mulle-testallocator nodetype: ${MULLE__TESTALLOCATOR_NODETYPE:-tar}
 #
 export MULLE__TESTALLOCATOR_NODETYPE="git"
