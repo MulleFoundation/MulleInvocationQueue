@@ -36,7 +36,7 @@ int   main( int argc, const char * argv[])
    queue = [queue autorelease];
    [queue start];
 
-   fout       = [Filehandle object];
+   fout       = [Filehandle instance];
 
    invocation = [NSInvocation mulleInvocationWithTarget:fout
                                                selector:@selector( printUTF8String:), "VfL"];
