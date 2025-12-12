@@ -39,7 +39,7 @@ int   main( int argc, const char * argv[])
                      configuration:MulleInvocationQueueMessageDelegateOnExecutionThread];
    queue = [queue autorelease];
 
-   foo = [Foo object];
+   foo = [Foo instance];
    [queue setDelegate:foo];
 
    s = mulle_strdup( "VfL Bochum 1848");

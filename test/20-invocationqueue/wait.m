@@ -43,7 +43,7 @@ int   main( int argc, const char * argv[])
                                    | MulleInvocationQueueTerminateWaitsForCompletion];
    queue = [queue autorelease];
 
-   foo = [Foo object];
+   foo = [Foo instance];
 
    [queue setDelegate:foo];
 

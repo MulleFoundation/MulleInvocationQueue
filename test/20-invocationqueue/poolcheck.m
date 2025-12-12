@@ -12,7 +12,7 @@
 + (instancetype) object
 {
    printf( "object\n");
-   return( [super object]);
+   return( [super instance]);
 }
 
 

@@ -53,8 +53,8 @@ int   main( int argc, const char * argv[])
    queue = [queue autorelease];
 
 
-   fout = [Filehandle object];
-   foo  = [Foo object];
+   fout = [Filehandle instance];
+   foo  = [Foo instance];
    [foo setFilehandle:fout];
 
    //

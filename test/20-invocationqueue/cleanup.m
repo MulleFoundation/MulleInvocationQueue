@@ -8,7 +8,7 @@ int   main( void)
    @autoreleasepool
    {
       queue = [MulleInvocationQueue invocationQueue];
-      invocation = [NSInvocation object];
+      invocation = [NSInvocation instance];
       [queue addInvocation:invocation];
    }
 

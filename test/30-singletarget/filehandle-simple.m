@@ -149,7 +149,7 @@ int   main( int argc, const char * argv[])
       return( 1);
 #endif
 
-   fout = [Filehandle object];
+   fout = [Filehandle instance];
    test_trace( "%s - #1: %s %td\n", __THREAD_NAME__, __FUNCTION__, [fout retainCount]);
 
    @autoreleasepool
