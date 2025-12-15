@@ -112,13 +112,15 @@ static inline BOOL   MulleInvocationQueueStateCanBeCancelled( NSUInteger state)
    mulle_absolutetime_t                _startTime;
 }
 
+// the delegate gets messages from both threads, extreme care needed!
 @property( assign) id <MulleInvocationQueueDelegate>   delegate;
 
 @property( readonly, dynamic, retain) MulleThread      *executionThread;
 @property( readonly, retain) NSInvocation              *failedInvocation;
 @property( readonly, retain) id                        exception;
+@property( readonly, dynamic) NSUInteger               state; // don't terminate before complete (NO)
 
-@property( readonly, dynamic) BOOL   trace; // send "done", whenever queue is empty (NO)
+@property( readonly, dynamic) BOOL   trace;
 @property( readonly, dynamic) BOOL   doneOnEmptyQueue; // send "done", whenever queue is empty (NO)
 @property( readonly, dynamic) BOOL   catchesExceptions; // cancel on exception (NO)
 @property( readonly, dynamic) BOOL   ignoresCaughtExceptions; // (NO)
@@ -126,7 +128,6 @@ static inline BOOL   MulleInvocationQueueStateCanBeCancelled( NSUInteger state)
 @property( readonly, dynamic) BOOL   messageDelegateOnExecutionThread; // (NO)
 @property( readonly, dynamic) BOOL   terminateWaitsForCompletion; // don't terminate before complete (NO)
 
-@property( readonly, dynamic) NSUInteger      state; // don't terminate before complete (NO)
 
 
 + (instancetype) invocationQueue;
@@ -137,7 +138,7 @@ static inline BOOL   MulleInvocationQueueStateCanBeCancelled( NSUInteger state)
 
 //
 // calls cancel if not appShouldWaitForCompletion, else blocks
-// the delegate will be nil after a succesful call
+// the delegate will be nil after a successful call
 // 0: OK
 // -1: fail (no thread running)
 //
@@ -163,8 +164,6 @@ static inline BOOL   MulleInvocationQueueStateCanBeCancelled( NSUInteger state)
 
 // only useful for testing, as this runs the MulleInvocationQueue synchronously
 - (int) invokeNextInvocation:(id) sender                    MULLE_OBJC_THREADSAFE_METHOD;  // unused sender
-
-
 
 @end
 

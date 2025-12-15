@@ -77,7 +77,9 @@
    case _C_ULNG_LNG  : length = sizeof( unsigned long long); break;
    case _C_FLT       : length = sizeof( float); break;
    case _C_DBL       : length = sizeof( double); break;
+#ifdef _C_LNG_DBL
    case _C_LNG_DBL   : length = sizeof( long double); break;
+#endif
    case _C_CHARPTR   : length = sizeof( char *); break;
    case _C_UNDEF     : length = sizeof( void *); break;
    case _C_ATOM      : length = sizeof( char *); break;
