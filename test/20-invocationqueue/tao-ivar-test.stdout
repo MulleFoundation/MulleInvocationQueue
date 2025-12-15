@@ -1,0 +1,22 @@
+=== Creating Foo ===
+Foo created with Bar (RC=1), Baz (RC=1)
+Foo RC after alloc/init: 1
+
+=== Relinquishing Foo (simulate transfer to thread) ===
+Foo RC after retain: 2
+Foo RC after relinquish: 3
+
+=== Gaining Foo back (simulate return from thread) ===
+Foo RC after gain: 3
+Foo RC after autorelease: 3
+
+=== Releasing Foo ===
+Foo RC after explicit release: 2
+
+=== Draining pool (should release Foo once more) ===
+Foo finalize, releasing Baz (RC=1) implicitly
+Foo dealloc, releasing Bar (RC=1) explicitly
+Bar dealloc
+Baz dealloc
+
+=== Done ===

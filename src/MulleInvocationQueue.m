@@ -28,6 +28,14 @@ NS_OPTIONS_TABLE( MulleInvocationQueueState, 10) =
 };
 
 
+@interface MulleInvocationQueue( Private)
+
+- (NSInvocation *) popInvocation:(BOOL *) isFinal              MULLE_INVOCATION_QUEUE_EXECUTION_THREAD_ONLY;
+- (void) didInvokeFinalInvocation:(NSInvocation *) invocation  MULLE_INVOCATION_QUEUE_EXECUTION_THREAD_ONLY;
+
+@end
+
+
 @implementation MulleInvocationQueue
 
 
@@ -545,6 +553,12 @@ retry:
    }
 
    return( (state & ~MulleInvocationQueueNotified) == MulleInvocationQueueRun);
+}
+
+
+- (MulleObjCTAOStrategy) mulleTAOStrategy
+{
+   return( MulleObjCTAOKnownThreadSafeMethods);
 }
 
 @end 

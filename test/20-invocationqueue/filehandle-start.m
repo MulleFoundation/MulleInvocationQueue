@@ -15,38 +15,44 @@
    printf( "%s\n", s);
 }
 
-
 @end
-
 
 
 int   main( int argc, const char * argv[])
 {
    MulleInvocationQueue   *queue;
-   NSInvocation           *invocation;
+   NSInvocation           *invocation1;
+   NSInvocation           *invocation2;
    Filehandle             *fout;
 
 #ifdef __MULLE_OBJC__
    if( mulle_objc_global_check_universe( __MULLE_OBJC_UNIVERSENAME__) != mulle_objc_universe_is_ok)
       return( 1);
 #endif
+
    queue = [MulleInvocationQueue alloc];
    queue = [queue initWithCapacity:128
                      configuration:MulleInvocationQueueMessageDelegateOnExecutionThread];
    queue = [queue autorelease];
+
+   assert( [queue mulleTAOStrategy] != MulleObjCTAOCallerRemovesFromAllPools);
+   assert( [queue mulleTAOStrategy] != MulleObjCTAOCallerRemovesFromCurrentPool);
+
+   //printf( "stacktrace: %s\n", mulle_stacktrace_get_backend( NULL));
+
    [queue start];
 
-   fout       = [Filehandle instance];
+   fout        = [Filehandle instance];
 
-   invocation = [NSInvocation mulleInvocationWithTarget:fout
-                                               selector:@selector( printUTF8String:), "VfL"];
-   [queue addInvocation:invocation];
+   invocation1 = [NSInvocation mulleInvocationWithTarget:fout
+                                                selector:@selector( printUTF8String:), "VfL"];
+   [queue addInvocation:invocation1];
 
    // this will/can already fail, because 'fout' has already been transferred
    // to the MulleInvocationQueue thread.
-   invocation = [NSInvocation mulleInvocationWithTarget:fout
-                                               selector:@selector( printUTF8String:), "Bochum"];
-   [queue addFinalInvocation:invocation];
+   invocation2 = [NSInvocation mulleInvocationWithTarget:fout
+                                                 selector:@selector( printUTF8String:), "Bochum"];
+   [queue addFinalInvocation:invocation2];
 
 
    // queue has already started and potentially all invocations have been
