@@ -1,3 +1,8 @@
+### 0.1.3
+
+
+* TAO fix for new default behaviour
+
 ### 0.1.2
 
 Various small improvements
