@@ -1,7 +1,7 @@
 {
    "name" : "MulleInvocationQueue",
-   "version" : "0.0.3",
-   "description" : "🚶🚶🚶 MulleInvocationQueue runs code in a separate thread",
+   "version" : "0.1.3",
+   "description" : "🚶🚶🚶 MulleInvocationQueue runs methods in a separate thread",
    "keywords" : [],
    "license" : "BSD-3-Clause",
    "repo" : "MulleFoundation/MulleInvocationQueue",
@@ -12,6 +12,8 @@
       "src/generic/MulleObjCLoader+MulleInvocationQueue.m",
       "src/MulleInvocationQueue.h",
       "src/MulleInvocationQueue.m",
+      "src/MulleSingleTargetInvocationQueue.h",
+      "src/MulleSingleTargetInvocationQueue.m",
       "src/NSInvocation+MulleReturnStatus.h",
       "src/NSInvocation+MulleReturnStatus.m",
       "src/NSInvocation+UTF8String.h",
@@ -25,7 +27,6 @@
    ],
    "dependencies" : {
       "MulleFoundation/MulleThread": "*",
-      "MulleFoundation/MulleFoundationBase": "*",
       "mulle-objc/mulle-objc-list": "*"
    }
 }
