@@ -16,7 +16,7 @@
 #import "MulleSingleTargetInvocationQueue.h"
 #import "NSInvocation+MulleReturnStatus.h"
 #import "NSInvocation+UTF8String.h"
-#import "MulleObjCLoader+MulleInvocationQueue.h"
+#import "MulleObjCDeps+MulleInvocationQueue.h"
 
 
 #endif

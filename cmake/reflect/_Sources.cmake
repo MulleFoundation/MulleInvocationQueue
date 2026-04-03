@@ -21,5 +21,5 @@ src/NSInvocation+UTF8String.m
 # contents selected with patternfile ??-source--stage2-sources
 #
 set( STAGE2_SOURCES
-src/generic/MulleObjCLoader+MulleInvocationQueue.m
+src/generic/MulleObjCDeps+MulleInvocationQueue.m
 )

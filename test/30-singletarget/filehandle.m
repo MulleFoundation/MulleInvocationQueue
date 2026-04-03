@@ -12,7 +12,7 @@
 
 - (void) printUTF8String:(char *) s
 {
-   printf( "%s\n", s);
+   mulle_printf( "%s\n", s);
 }
 
 @end

@@ -101,7 +101,7 @@
       [self getReturnValue:buf];
       for( p = buf, sentinel = &buf[ length]; p < sentinel; p++)
          if( *p)
-            return( YES);
+            _mulle_alloca_do_return( buf, YES);
    }
    return( NO);
 }

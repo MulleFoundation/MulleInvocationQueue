@@ -19,7 +19,7 @@
 //    remove #import      : `mulle-sde dependency mark MulleThread no-header`
 //    rename              : `mulle-sde dependency|library set MulleThread include whatever.h`
 //    reorder             : `mulle-sde dependency move MulleThread <up|down>`
-//    toggle #import      : `mulle-sde dependency mark MulleThread [no-]import`
+//    toggle objc         : `mulle-sde dependency mark MulleThread [no-]import`
 //    toggle public       : `mulle-sde dependency mark MulleThread [no-]public`
 //    toggle optional     : `mulle-sde dependency mark MulleThread [no-]require`
 //    remove for platform : `mulle-sde dependency mark MulleThread no-platform-<uname>`

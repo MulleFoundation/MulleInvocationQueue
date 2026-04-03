@@ -11,13 +11,13 @@
 - (void) invocationQueue:(MulleInvocationQueue *) queue
         didChangeToState:(NSUInteger) state
 {
-   fprintf( stderr, "%s\n", MulleInvocationQueueStateUTF8String( state));
+   mulle_fprintf( stderr, "%s\n", MulleInvocationQueueStateUTF8String( state));
 }
 
 
 - (void) printUTF8String:(char *) s
 {
-   printf( "%s\n", s);
+   mulle_printf( "%s\n", s);
 }
 
 @end

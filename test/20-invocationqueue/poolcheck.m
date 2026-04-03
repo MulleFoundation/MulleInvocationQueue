@@ -11,14 +11,14 @@
 
 + (instancetype) object
 {
-   printf( "object\n");
+   mulle_printf( "object\n");
    return( [super instance]);
 }
 
 
 - (void) dealloc
 {
-   printf( "dealloc\n");
+   mulle_printf( "dealloc\n");
    [super dealloc];
 }
 
