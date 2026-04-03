@@ -252,7 +252,7 @@ static void   MulleInvocationQueueFinalizing( MulleInvocationQueue *self)
 
    state = (NSUInteger) _mulle_atomic_pointer_read( &_atomic_state);
    if( _configuration & MulleInvocationQueueTrace)
-      fprintf( stderr, "queue %p state is %s\n", self, MulleInvocationQueueStateUTF8String( state));
+      mulle_fprintf( stderr, "queue %p state is %s\n", self, MulleInvocationQueueStateUTF8String( state));
    return( state);
 }
 
@@ -341,7 +341,7 @@ static void   MulleInvocationQueueFinalizing( MulleInvocationQueue *self)
    [self _setState:MulleInvocationQueueRun];
 
    if( _configuration & MulleInvocationQueueTrace)
-      fprintf( stderr, "queue %p executes %s", self, [invocation invocationUTF8String]);
+      mulle_fprintf( stderr, "queue %p executes %s", self, [invocation invocationUTF8String]);
 
    if( _configuration & MulleInvocationQueueIgnoresCaughtExceptions)
    {

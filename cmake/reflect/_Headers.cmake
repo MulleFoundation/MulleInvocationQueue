@@ -54,7 +54,7 @@ src/MulleInvocationQueue.h
 src/MulleSingleTargetInvocationQueue.h
 src/NSInvocation+MulleReturnStatus.h
 src/NSInvocation+UTF8String.h
-src/generic/MulleObjCLoader+MulleInvocationQueue.h
+src/generic/MulleObjCDeps+MulleInvocationQueue.h
 src/reflect/_MulleInvocationQueue-versioncheck.h
 )
 

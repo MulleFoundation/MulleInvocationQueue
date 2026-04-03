@@ -12,7 +12,7 @@
 
 - (void) printUTF8String:(char *) s
 {
-   printf( "%s\n", s);
+   mulle_printf( "%s\n", s);
 }
 
 @end
@@ -38,7 +38,7 @@ int   main( int argc, const char * argv[])
    assert( [queue mulleTAOStrategy] != MulleObjCTAOCallerRemovesFromAllPools);
    assert( [queue mulleTAOStrategy] != MulleObjCTAOCallerRemovesFromCurrentPool);
 
-   //printf( "stacktrace: %s\n", mulle_stacktrace_get_backend( NULL));
+   //mulle_printf( "stacktrace: %s\n", mulle_stacktrace_get_backend( NULL));
 
    [queue start];
 
