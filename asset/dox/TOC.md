@@ -1,467 +1,171 @@
 # MulleInvocationQueue Library Documentation for AI
-
+<!-- Keywords: invocationqueue, thread, nsinvocation, serial, delegate, single-target, objc -->
 ## 1. Introduction & Purpose
 
-MulleInvocationQueue provides asynchronous method invocation processing in a dedicated thread. Accepts NSInvocation objects queued from the main thread and executes them serially in a background worker thread with automatic error handling, exception catching, and state notifications. Enables safe off-main-thread task processing with optional delegate callbacks for state changes and completion handling.
+- MulleInvocationQueue executes NSInvocation objects serially in a separate thread.
+- Solves: offloading method calls to a worker thread while preserving call order and allowing a "final" invocation to mark completion.
+- Key features: configurable behavior flags, execution thread exposure, delegate notifications, final-invocation semantics, single-target specialization.
+- Relationship: depends on MulleThread and mulle-objc-list; integrates with Objective-C runtime via NSInvocation categories.
 
 ## 2. Key Concepts & Design Philosophy
 
-- **Asynchronous Processing**: Queue methods from main thread; execute serially in background
-- **Thread-Safe Queueing**: Add invocations from any thread; executes sequentially
-- **Invocation-Based**: Uses NSInvocation for flexible method dispatch
-- **State Machine**: Tracks queue state (Init, Idle, Run, Empty, Done, Error, Exception, Cancelled)
-- **Exception Handling**: Optional exception catching and continuation
-- **Delegate Notifications**: State change notifications via delegate pattern
-- **Final Invocation**: Support for cleanup/finalization invocation
-- **Configuration Options**: Fine-grained control over error handling and notification
+- Queue model: producers (caller thread) enqueue NSInvocation objects; a worker thread consumes invocations sequentially.
+- Final invocation: a special invocation that signals completion; queue can transition to Done state.
+- Configuration flags control tracing, exception handling, delegate delivery thread, cancellation semantics.
+- Single-target specialization: MulleSingleTargetInvocationQueue "gains" exclusive access to a single target for the queue lifetime.
+- Minimal locking and atomic state are used; executionThread and state are exposed for inspection.
 
 ## 3. Core API & Data Structures
 
-### Configuration Options
+This section lists the primary public headers and the important symbols an AI should know.
 
-```objc
-typedef NS_OPTIONS(NSUInteger, MulleInvocationQueueConfiguration) {
-    MulleInvocationQueueTrace                            = 0x1,    // Enable tracing
-    MulleInvocationQueueDoneOnEmptyQueue                 = 0x2,    // Notify done when empty
-    MulleInvocationQueueCatchesExceptions                = 0x4,    // Catch & handle exceptions
-    MulleInvocationQueueIgnoresCaughtExceptions          = 0x8,    // Ignore caught exceptions
-    MulleInvocationQueueCancelsOnFailedReturnStatus      = 0x10,   // Cancel on return error
-    MulleInvocationQueueMessageDelegateOnExecutionThread = 0x20,   // Notify delegate on exec thread
-    MulleInvocationQueueTerminateWaitsForCompletion      = 0x40    // Wait for completion on terminate
-};
-```
+### 3.1. [MulleInvocationQueue.h]
 
-### State Machine
+struct/ObjC class: MulleInvocationQueue (subclass of NSObject)
+- Purpose: serial execution of NSInvocation objects in a separate thread.
+- Key fields (internal): _queueLock, _queue (pointer queue), _atomic_state, _executionThread, _finalInvocation, _configuration, _startTime.
+- Properties:
+   - delegate (assign) : id<MulleInvocationQueueDelegate>
+   - executionThread (readonly) : MulleThread *
+   - failedInvocation (readonly) : NSInvocation *
+   - exception (readonly) : id
+   - state (readonly) : NSUInteger (MulleInvocationQueueState)
+   - trace, doneOnEmptyQueue, catchesExceptions, ignoresCaughtExceptions, cancelsOnFailedReturnStatus, messageDelegateOnExecutionThread, terminateWaitsForCompletion (readonly dynamic BOOLs)
 
-```objc
-typedef NS_OPTIONS(NSUInteger, MulleInvocationQueueState) {
-    MulleInvocationQueueInit        = 0,       // Initial state before start
-    MulleInvocationQueueIdle,                  // Queue empty, waiting for invocations
-    MulleInvocationQueueRun,                   // Queue executing invocation
-    MulleInvocationQueueEmpty,                 // All invocations processed
-    MulleInvocationQueueDone,                  // Final invocation processed
-    MulleInvocationQueueError,                 // Cancelled due to error
-    MulleInvocationQueueException,             // Cancelled due to exception
-    MulleInvocationQueueCancel,                // Manual cancellation
-    MulleInvocationQueueTerminated,            // Queue terminated, no longer usable
-    MulleInvocationQueueNotified = 0x8000      // Main thread has been notified
-};
-```
+- Lifecycle / creation:
+   - + (instancetype) invocationQueue;
+   - + (instancetype) invocationQueueWithCapacity:(NSUInteger) capacity configuration:(MulleInvocationQueueConfiguration) configuration;
+   - - (instancetype) initWithCapacity:(NSUInteger) capacity configuration:(MulleInvocationQueueConfiguration) configuration;
 
-### Creation & Initialization
+- Control / Execution:
+   - - (void) start;
+   - - (void) startWithThreadClass:(Class) threadClass;
+   - - (void) preempt;
+   - - (int) terminate; // 0 OK, -1 fail
+   - - (void) cancelWhenIdle;
 
-- `+ invocationQueue` → `instancetype`: Create default queue
-- `+ invocationQueueWithCapacity:(NSUInteger)capacity configuration:(MulleInvocationQueueConfiguration)config` → `instancetype`: Create with specific capacity and config
-- `- initWithCapacity:(NSUInteger)capacity configuration:(MulleInvocationQueueConfiguration)config` → `instancetype`: Initialize queue
+- Queue operations:
+   - - (void) addInvocation:(NSInvocation *) invocation;
+   - - (void) addFinalInvocation:(NSInvocation *) invocation;
+   - - (BOOL) poll; // not for execution thread
+   - - (int) invokeNextInvocation:(id) sender; // synchronous for testing
 
-### Queue Control
+- Notifications / delegate:
+   - Protocol MulleInvocationQueueDelegate: - (void) invocationQueue:(MulleInvocationQueue *) queue didChangeToState:(NSUInteger) state;
+   - States: MulleInvocationQueueInit, Idle, Run, Empty, Done, Error, Exception, Cancel, Terminated, Notified.
+   - Helpers: MulleInvocationQueueStateUTF8String, MulleInvocationQueueStateIsFinished, MulleInvocationQueueStateCanBeCancelled
 
-- `- start` → `void`: Start background thread (not from exec thread)
-- `- startWithThreadClass:(Class)threadClass` → `void`: Start with custom MulleThread subclass
-- `- addInvocation:(NSInvocation *)inv` → `void`: Add regular invocation (thread-safe)
-- `- addFinalInvocation:(NSInvocation *)inv` → `void`: Add final/cleanup invocation (thread-safe)
-- `- cancelWhenIdle` → `void`: Cancel gracefully at next idle point (not from exec thread)
-- `- preempt` → `void`: Cancel immediately (thread-safe)
-- `- terminate` → `int`: Terminate queue; returns 0 on success, -1 on failure (thread-safe)
-- `- poll` → `BOOL`: Check/poll queue without blocking (not from exec thread)
-- `- invokeNextInvocation:(id)sender` → `int`: Synchronously invoke next (testing only)
+### 3.2. [MulleSingleTargetInvocationQueue.h]
 
-### Properties
+- Subclass of MulleInvocationQueue.
+- Purpose: Queue optimized for a single target; queue "gains" exclusive access to the target once first invocation is added and releases after finalInvocation.
+- Property: target (readonly, retain)
+- Use when targets are not thread-safe and you need exclusive ownership for the queue lifetime.
 
-- `delegate` (id<MulleInvocationQueueDelegate>, assign): Delegate for state notifications
-- `executionThread` (MulleThread *, readonly, retain): Background execution thread
-- `failedInvocation` (NSInvocation *, readonly, retain): Invocation that caused error
-- `exception` (id, readonly, retain): Exception caught during execution
-- `state` (NSUInteger, readonly, dynamic): Current queue state
-- `trace` (BOOL, readonly, dynamic): Whether tracing enabled
-- `doneOnEmptyQueue` (BOOL, readonly, dynamic): Notify when queue becomes empty
-- `catchesExceptions` (BOOL, readonly, dynamic): Whether exceptions are caught
-- `ignoresCaughtExceptions` (BOOL, readonly, dynamic): Ignore caught exceptions
-- `cancelsOnFailedReturnStatus` (BOOL, readonly, dynamic): Cancel on invocation return error
-- `messageDelegateOnExecutionThread` (BOOL, readonly, dynamic): Send delegate messages on exec thread
-- `terminateWaitsForCompletion` (BOOL, readonly, dynamic): Block terminate until complete
+### 3.3. [NSInvocation+MulleReturnStatus.h]
 
-### Delegate Protocol
+- Category on NSInvocation
+- Method: - (BOOL) mulleReturnStatus;
+- Purpose: convenience to inspect a boolean-like return value (used by queue when cancelsOnFailedReturnStatus is enabled).
 
-```objc
-@protocol MulleInvocationQueueDelegate
-- (void) invocationQueue:(MulleInvocationQueue *)queue 
-          didChangeToState:(NSUInteger)state;
-@end
-```
+### 3.4. [NSInvocation+UTF8String.h]
 
-Delegate callback fired when queue state changes (if messageDelegateOnExecutionThread, called on background thread).
-
-### State Helper Functions
-
-- `MulleInvocationQueueStateIsFinished(NSUInteger state)` → `BOOL`: Check if state is terminal
-- `MulleInvocationQueueStateCanBeCancelled(NSUInteger state)` → `BOOL`: Check if state allows cancellation
-- `MulleInvocationQueueStateUTF8String(NSUInteger state)` → `char *`: Get state name as C string
-
-### Return Status Protocol
-
-Invocations can return status codes:
-- `MulleInvocationReturnStatusOK` (0): Continue normally
-- `MulleInvocationReturnStatusFailed` (-1): Error condition (cancels if configured)
-- `MulleInvocationReturnStatusCancel` (-2): Cancel queue
+- Category on NSInvocation
+- Method: - (char *) invocationUTF8String;
+- Purpose: produce a UTF8 string representation of invocation for tracing/logging.
 
 ## 4. Performance Characteristics
 
-- **Queueing**: O(1) lock-based queue insertion (thread-safe)
-- **Execution**: O(1) per invocation dispatch (excluding invocation body)
-- **Threading**: One background thread per queue (minimal overhead)
-- **Synchronization**: Mutex-based locking; efficient on multi-core
-- **Memory**: Queue grows with pending invocations; configurable capacity
-- **Latency**: Background thread processes immediately when nudged
-- **Contention**: Low; main thread only locks during add operations
+- Enqueue / dequeue: intended O(1) amortized (pointer queue operations).
+- Execution: serial on a single worker thread — throughput limited by invocation execution time.
+- Memory: stores NSInvocation objects in pointer queue; retains behavior depends on queue internals (finalInvocation assigned/retained via queue logic).
+- Thread-safety: public enqueue operations are thread-safe (MULLE_OBJC_THREADSAFE_METHOD); some setup/termination operations must be performed off the execution thread (MULLE_INVOCATION_SETUP_EXECUTION_THREAD_ONLY).
+- Trade-offs: simple serial execution for correctness and ease; not designed for parallel invocation execution.
 
 ## 5. AI Usage Recommendations & Patterns
 
-### Best Practices
+- Best practices:
+   - Use provided constructors and lifecycle calls (+invocationQueue / initWithCapacity:configuration:).
+   - Always add a final invocation if you need a deterministic completion signal.
+   - Use -start or -startWithThreadClass: from the creating thread, not the execution thread.
+   - Call -terminate to stop the queue; check return value.
+   - Observe delegate notifications to track state transitions; delegate messages may come from either thread — handle accordingly.
 
-- **Queue from Main Thread**: Add invocations from main thread; execute in background
-- **Thread-Safe Target**: Target objects must be thread-safe or exclusively used by queue
-- **Final Invocation**: Use final invocation for cleanup (close files, flush buffers)
-- **Exception Handling**: Enable exception catching for robustness
-- **Delegate Callbacks**: Set delegate to monitor progress
-- **Graceful Shutdown**: Use cancelWhenIdle + terminate for clean shutdown
-- **Return Status**: Have invocations return status codes for error detection
+- Common pitfalls:
+   - Do not call setup methods from the execution thread.
+   - Be careful with targets that are not thread-safe; prefer MulleSingleTargetInvocationQueue for them.
+   - Do not free pointers returned by invocationUTF8String; treat them per library conventions.
 
-### Common Pitfalls
-
-- **From Exec Thread**: Never call start, cancelWhenIdle, or poll from execution thread
-- **Thread Safety**: Target must handle concurrent access if reused by queue
-- **Memory Cycles**: Invocations hold references; ensure no cycles with queue
-- **Exceptions**: Uncaught exceptions crash unless exception catching enabled
-- **Delegate Deadlock**: Delegate on exec thread may deadlock if blocking on main thread
-- **Multiple Adds**: Can queue multiple invocations for same target (if target thread-safe)
-- **Terminate Blocking**: Terminate waits if terminateWaitsForCompletion set
-
-### Idiomatic Usage
-
-```objc
-// Pattern 1: Create and queue work
-MulleInvocationQueue *queue = [MulleInvocationQueue invocationQueue];
-[queue start];
-
-NSInvocation *inv = [NSInvocation mulleInvocationWithTarget:target
-                                                   selector:@selector(doWork:)
-                                                      args:data];
-[queue addInvocation:inv];
-
-// Pattern 2: Set delegate for state monitoring
-@interface Monitor : NSObject <MulleInvocationQueueDelegate> @end
-@implementation Monitor
-- (void)invocationQueue:(MulleInvocationQueue *)q didChangeToState:(NSUInteger)s {
-    NSLog(@"State changed to: %s", MulleInvocationQueueStateUTF8String(s));
-}
-@end
-
-queue.delegate = [[[Monitor alloc] init] autorelease];
-
-// Pattern 3: Graceful shutdown
-[queue cancelWhenIdle];
-[queue terminate];
-
-// Pattern 4: Final invocation for cleanup
-NSInvocation *cleanup = [NSInvocation mulleInvocationWithTarget:resource
-                                                        selector:@selector(close)];
-[queue addFinalInvocation:cleanup];
-```
+- Idiomatic usage:
+   - Configure with flags (MulleInvocationQueueConfiguration) to control exception handling and delegate delivery.
+   - For boolean return-status protocols, enable MulleInvocationQueueCancelsOnFailedReturnStatus.
 
 ## 6. Integration Examples
 
-### Example 1: Basic Queue Usage
+### Example 1: Creating and starting a queue
 
 ```objc
-#import <MulleInvocationQueue/MulleInvocationQueue.h>
+// Create a queue, add invocations, start it
+MulleInvocationQueue  *queue;
+NSInvocation          *invocation;
 
-@interface Worker : NSObject
-- (void)doWork:(NSString *)task;
-@end
+queue = [MulleInvocationQueue alloc];
+queue = [queue initWithCapacity:128
+                  configuration:MulleInvocationQueueMessageDelegateOnExecutionThread];
+queue = [queue autorelease];
 
-@implementation Worker
-- (void)doWork:(NSString *)task {
-    NSLog(@"Processing: %@", task);
-}
-@end
+// create invocation (helper from project runtime)
+invocation = [NSInvocation mulleInvocationWithTarget:foo
+                                             selector:@selector(printUTF8String:), s];
 
-int main() {
-    Worker *worker = [[Worker alloc] init];
-    
-    MulleInvocationQueue *queue = [MulleInvocationQueue invocationQueue];
-    [queue start];
-    
-    // Queue some work
-    for (int i = 0; i < 3; i++) {
-        NSString *task = [NSString stringWithFormat:@"Task%d", i];
-        NSInvocation *inv = [NSInvocation mulleInvocationWithTarget:worker
-                                                          selector:@selector(doWork:)
-                                                            objects:task];
-        [queue addInvocation:inv];
-    }
-    
-    sleep(2);
-    
-    [queue cancelWhenIdle];
-    [queue terminate];
-    [worker release];
-    
-    return 0;
-}
+[queue addInvocation:invocation];
+[queue start];
+
+// optionally add a final invocation to mark completion
+invocation = [NSInvocation mulleInvocationWithTarget:foo
+                                             selector:@selector(close), nil];
+[queue addFinalInvocation:invocation];
 ```
 
-### Example 2: Queue with Delegate Monitoring
+### Example 2: Using a single-target queue
 
 ```objc
-#import <MulleInvocationQueue/MulleInvocationQueue.h>
+MulleSingleTargetInvocationQueue  *stq;
+NSInvocation                       *inv;
 
-@interface QueueMonitor : NSObject <MulleInvocationQueueDelegate>
-@end
+stq = [MulleSingleTargetInvocationQueue invocationQueueWithCapacity:64
+                                                         configuration:0];
 
-@implementation QueueMonitor
-- (void)invocationQueue:(MulleInvocationQueue *)queue
-        didChangeToState:(NSUInteger)state {
-    NSLog(@"Queue state: %s", MulleInvocationQueueStateUTF8String(state));
-}
-@end
+inv = [NSInvocation mulleInvocationWithTarget:resource
+                                     selector:@selector(writeData:), data];
+[stq addInvocation:inv];
+[stq start];
 
-@interface Task : NSObject
-- (void)execute:(NSString *)name;
-@end
-
-@implementation Task
-- (void)execute:(NSString *)name {
-    NSLog(@"Executing: %@", name);
-    sleep(1);
-}
-@end
-
-int main() {
-    Task *task = [[Task alloc] init];
-    QueueMonitor *monitor = [[QueueMonitor alloc] init];
-    
-    MulleInvocationQueue *queue = [MulleInvocationQueue 
-        invocationQueueWithCapacity:16
-                      configuration:MulleInvocationQueueDoneOnEmptyQueue];
-    
-    queue.delegate = monitor;
-    [queue start];
-    
-    NSInvocation *inv = [NSInvocation mulleInvocationWithTarget:task
-                                                       selector:@selector(execute:)
-                                                        objects:@"Work"];
-    [queue addInvocation:inv];
-    
-    sleep(3);
-    
-    [queue terminate];
-    [task release];
-    [monitor release];
-    
-    return 0;
-}
+// stq.target is owned by the queue after first invocation is added
 ```
 
-### Example 3: Exception Handling
+### Example 3: Inspecting state and failed invocation
 
 ```objc
-#import <MulleInvocationQueue/MulleInvocationQueue.h>
+NSUInteger state;
 
-@interface RiskyWork : NSObject
-- (void)mayThrow;
-- (void)alsoWorks;
-@end
-
-@implementation RiskyWork
-- (void)mayThrow {
-    NSException *ex = [NSException exceptionWithName:@"TestException"
-                                              reason:@"Intentional"
-                                            userInfo:nil];
-    [ex raise];
-}
-
-- (void)alsoWorks {
-    NSLog(@"This still runs despite previous exception");
-}
-@end
-
-int main() {
-    RiskyWork *work = [[RiskyWork alloc] init];
-    
-    MulleInvocationQueue *queue = [MulleInvocationQueue 
-        invocationQueueWithCapacity:16
-                      configuration:MulleInvocationQueueCatchesExceptions];
-    
-    [queue start];
-    
-    // Queue throws
-    NSInvocation *inv1 = [NSInvocation mulleInvocationWithTarget:work
-                                                        selector:@selector(mayThrow)];
-    [queue addInvocation:inv1];
-    
-    // Queue continues despite exception
-    NSInvocation *inv2 = [NSInvocation mulleInvocationWithTarget:work
-                                                        selector:@selector(alsoWorks)];
-    [queue addInvocation:inv2];
-    
-    sleep(2);
-    
-    [queue cancelWhenIdle];
-    [queue terminate];
-    [work release];
-    
-    return 0;
-}
-```
-
-### Example 4: Return Status Error Handling
-
-```objc
-#import <MulleInvocationQueue/MulleInvocationQueue.h>
-
-@interface StatusfulWork : NSObject
-- (int)successfulTask;
-- (int)failingTask;
-@end
-
-@implementation StatusfulWork
-- (int)successfulTask {
-    NSLog(@"Task succeeded");
-    return MulleInvocationReturnStatusOK;
-}
-
-- (int)failingTask {
-    NSLog(@"Task failed");
-    return MulleInvocationReturnStatusFailed;
-}
-@end
-
-int main() {
-    StatusfulWork *work = [[StatusfulWork alloc] init];
-    
-    MulleInvocationQueue *queue = [MulleInvocationQueue 
-        invocationQueueWithCapacity:16
-                      configuration:MulleInvocationQueueCancelsOnFailedReturnStatus];
-    
-    [queue start];
-    
-    NSInvocation *inv1 = [NSInvocation mulleInvocationWithTarget:work
-                                                        selector:@selector(successfulTask)];
-    [queue addInvocation:inv1];
-    
-    NSInvocation *inv2 = [NSInvocation mulleInvocationWithTarget:work
-                                                        selector:@selector(failingTask)];
-    [queue addInvocation:inv2];
-    
-    sleep(2);
-    
-    if (queue.state == MulleInvocationQueueError) {
-        NSLog(@"Queue cancelled due to error");
-    }
-    
-    [queue terminate];
-    [work release];
-    
-    return 0;
-}
-```
-
-### Example 5: Final Invocation Cleanup
-
-```objc
-#import <MulleInvocationQueue/MulleInvocationQueue.h>
-
-@interface Resource : NSObject
-- (void)process:(NSString *)data;
-- (void)close;
-@end
-
-@implementation Resource
-- (void)process:(NSString *)data {
-    NSLog(@"Processing: %@", data);
-}
-
-- (void)close {
-    NSLog(@"Resource cleaned up");
-}
-@end
-
-int main() {
-    Resource *resource = [[Resource alloc] init];
-    
-    MulleInvocationQueue *queue = [MulleInvocationQueue invocationQueue];
-    [queue start];
-    
-    // Queue work
-    for (int i = 0; i < 2; i++) {
-        NSString *data = [NSString stringWithFormat:@"Data%d", i];
-        NSInvocation *inv = [NSInvocation mulleInvocationWithTarget:resource
-                                                           selector:@selector(process:)
-                                                            objects:data];
-        [queue addInvocation:inv];
-    }
-    
-    // Queue final cleanup
-    NSInvocation *cleanup = [NSInvocation mulleInvocationWithTarget:resource
-                                                           selector:@selector(close)];
-    [queue addFinalInvocation:cleanup];
-    
-    sleep(2);
-    
-    [queue terminate];
-    [resource release];
-    
-    return 0;
-}
-```
-
-### Example 6: Polling for Completion
-
-```objc
-#import <MulleInvocationQueue/MulleInvocationQueue.h>
-
-@interface Task : NSObject
-- (void)work;
-@end
-
-@implementation Task
-- (void)work {
-    NSLog(@"Working...");
-    sleep(1);
-}
-@end
-
-int main() {
-    Task *task = [[Task alloc] init];
-    
-    MulleInvocationQueue *queue = [MulleInvocationQueue invocationQueue];
-    [queue start];
-    
-    NSInvocation *inv = [NSInvocation mulleInvocationWithTarget:task
-                                                       selector:@selector(work)];
-    [queue addInvocation:inv];
-    
-    // Poll for completion
-    while (!MulleInvocationQueueStateIsFinished(queue.state)) {
-        if ([queue poll]) {
-            NSLog(@"Progress...");
-        }
-        sleep(1);
-    }
-    
-    NSLog(@"Queue finished in state: %s", 
-          MulleInvocationQueueStateUTF8String(queue.state));
-    
-    [queue terminate];
-    [task release];
-    
-    return 0;
+state = [queue state];
+if( MulleInvocationQueueStateIsFinished( state))
+{
+   // finished; examine exception or failedInvocation
+   id ex = [queue exception];
+   NSInvocation *failed = [queue failedInvocation];
 }
 ```
 
 ## 7. Dependencies
 
-- MulleThread (background thread management)
-- MulleObjCStandardFoundation (NSInvocation, NSObject)
-- mulle-objc (Objective-C runtime)
+- MulleFoundation/MulleThread
+- mulle-objc/mulle-objc-list
+
+
+--
+Notes for an AI reader:
+- Main public API is found in src/MulleInvocationQueue.h and src/MulleSingleTargetInvocationQueue.h.
+- Useful runtime helpers: NSInvocation categories (mulleReturnStatus, invocationUTF8String) live in src and used by queue internals and tracing.
+- Tests (under test/) illustrate practical lifecycle; prefer them for edge-case examples.

@@ -89,3 +89,4 @@ test/**/*.trc
 test/**/*.txt
 .roam
 .graveyard
+*.tmp.*
