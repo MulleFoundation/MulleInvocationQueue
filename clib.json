@@ -1,11 +1,12 @@
 {
    "name" : "MulleInvocationQueue",
-   "version" : "0.1.3",
+   "version" : "0.2.0",
    "description" : "🚶🚶🚶 MulleInvocationQueue runs methods in a separate thread",
    "keywords" : [],
    "license" : "BSD-3-Clause",
    "repo" : "MulleFoundation/MulleInvocationQueue",
    "src" : [
+      "asset/dox/TOC.md",
       "src/generic/import-private.h",
       "src/generic/import.h",
       "src/generic/MulleObjCDeps+MulleInvocationQueue.h",

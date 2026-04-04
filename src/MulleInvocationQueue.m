@@ -314,6 +314,7 @@ static void   MulleInvocationQueueFinalizing( MulleInvocationQueue *self)
 
 - (void) didInvokeFinalInvocation:(NSInvocation *) invocation
 {
+   MULLE_C_UNUSED( invocation);
    MulleInvocationQueueFinalizing( self);   // do this *after* _setState:
 }
 
@@ -323,6 +324,7 @@ static void   MulleInvocationQueueFinalizing( MulleInvocationQueue *self)
    NSInvocation   *invocation;
    BOOL           isFinal;
 
+   MULLE_C_UNUSED( unused);
    assert( [self isExecutionThread]);
 
    invocation = [self popInvocation:&isFinal];
