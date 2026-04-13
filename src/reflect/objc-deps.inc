@@ -1,3 +1,4 @@
+      { @selector( MulleObjCDeps), @selector( MulleThread) },      // 3c20656f;MulleObjCDeps;c7c34b28;MulleThread
       { @selector( MulleInvocationQueue), MULLE_OBJC_NO_CATEGORYID },      // 9a5137b3;MulleInvocationQueue;;
       { @selector( MulleSingleTargetInvocationQueue), MULLE_OBJC_NO_CATEGORYID },      // 62f0858e;MulleSingleTargetInvocationQueue;;
       { @selector( NSInvocation), @selector( MulleReturnStatus) },      // c089c043;NSInvocation;bd6f8a28;MulleReturnStatus
