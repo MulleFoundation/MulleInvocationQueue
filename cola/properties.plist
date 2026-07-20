@@ -6,7 +6,7 @@
       language="c";
       dialect="objc";
       name="MulleInvocationQueue";
-      version="0.2.0";
+      version="0.2.1";
       user="MulleFoundation";
       repo="MulleInvocationQueue";
       homepage="https://github.com/MulleFoundation/MulleInvocationQueue";

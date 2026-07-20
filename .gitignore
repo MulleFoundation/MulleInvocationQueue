@@ -90,3 +90,5 @@ test/**/*.txt
 .roam
 .graveyard
 *.tmp.*
+*.test.*
+.idea
