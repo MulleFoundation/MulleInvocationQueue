@@ -7,7 +7,7 @@
 
 #if defined( MULLE_THREAD_VERSION)
 # ifndef MULLE_THREAD_VERSION_MIN
-#  define MULLE_THREAD_VERSION_MIN  ((0UL << 20) | (2 << 8) | 2)
+#  define MULLE_THREAD_VERSION_MIN  ((0UL << 20) | (2 << 8) | 3)
 # endif
 # ifndef MULLE_THREAD_VERSION_MAX
 #  define MULLE_THREAD_VERSION_MAX  ((0UL << 20) | (3 << 8) | 0)

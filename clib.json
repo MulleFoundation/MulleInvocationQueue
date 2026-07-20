@@ -1,6 +1,6 @@
 {
    "name" : "MulleInvocationQueue",
-   "version" : "0.2.0",
+   "version" : "0.2.1",
    "description" : "🚶🚶🚶 MulleInvocationQueue runs methods in a separate thread",
    "keywords" : [],
    "license" : "BSD-3-Clause",
