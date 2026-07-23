@@ -52,3 +52,9 @@ export MULLE_SOURCETREE_TO_C_INCLUDE_FILE="ON"
 
 
 
+#
+#
+#
+export vibecoding="off"
+
+
