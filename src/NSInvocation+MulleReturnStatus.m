@@ -1,5 +1,5 @@
 //
-//  NSInvocation+BoolValue.m
+//  NSInvocation+MulleReturnStatus.m
 //  MulleInvocationQueue
 //
 //  Copyright (c) 2022 Nat! - Mulle kybernetiK.
