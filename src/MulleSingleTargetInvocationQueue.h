@@ -1,5 +1,5 @@
 //
-//  MulleSingleTargetInvocationQueue.m
+//  MulleSingleTargetInvocationQueue.h
 //  MulleInvocationQueue
 //
 //  Copyright (c) 2024 Nat! - Mulle kybernetiK.
