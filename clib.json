@@ -1,6 +1,6 @@
 {
    "name" : "MulleInvocationQueue",
-   "version" : "0.2.2",
+   "version" : "0.2.3",
    "description" : "🚶🚶🚶 MulleInvocationQueue runs methods in a separate thread",
    "keywords" : [],
    "license" : "BSD-3-Clause",
@@ -28,6 +28,6 @@
    ],
    "dependencies" : {
       "MulleFoundation/MulleThread": "*",
-      "mulle-objc/mulle-objc-list": "*"
+      "mulle-objc/mulle-objc-tools": "*"
    }
 }
